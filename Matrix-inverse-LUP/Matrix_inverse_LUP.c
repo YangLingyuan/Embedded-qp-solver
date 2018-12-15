@@ -49,7 +49,7 @@
 typedef  	double  	sankhya;
 
 
-# define	N	5 //Size of the to-be-inverted N x N square matrix 'A'.
+# define	N	10 //Size of the to-be-inverted N x N square matrix 'A'.
 
 
 /* This function performs LUP decomposition of the to-be-inverted matrix 'A'. It is
