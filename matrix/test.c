@@ -1,22 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "matrix.h"
 
-#define N_ROWS 8
+#define N_ROWS 500
 
-void set_test(struct _matrix m)
+#define TEST_PRECISION 1e-6
+#define NUM_TEST_RUNS 12
+#define RAND_ENTRY_MIN -1e3
+#define RAND_ENTRY_MAX 1e3
+
+#define ABS(x) (x < 0 ? -x : x)
+
+static unsigned almost_identity(struct _matrix m, double precision)
 {
-	double tmp = 0;
-	matrix_zero_up(m);
-	for (unsigned i = 0; N_ROWS > i; i++)
-		for (unsigned j = 0; N_ROWS > j; j++) {
-			tmp = rand();
-			if ((unsigned)tmp % 2)
-				tmp *= -1;
-			tmp /= (double)RAND_MAX;
-			matrix_set_entry(m, i, j, tmp);
+	double x = 0;
+	for (unsigned i = 0; m.nrows > i; i++)
+		for (unsigned j = 0; m.nrows > j; j++) {
+			x = matrix_get_entry(m, i, j);
+			if (isnan(x)) {
+				fprintf(stderr,
+					"entry (%u, %u) is nan\n", i, j);
+				return 0;
+			} else if (i == j && precision < ABS(1 - x)) {
+				fprintf(stderr, "entry (%u, %u) is %.12lf "
+						"but should be 1\n", i, j, x);
+				return 0;
+			} else if (i != j && precision < ABS(x)) {
+				fprintf(stderr, "entry (%u, %u) is %.12lf "
+						"but should be 0\n", i, j, x);
+				return 0;
+			}
 		}
+	return 1U;
 }
 
 int main(void)
@@ -44,24 +61,18 @@ int main(void)
 	struct _matrix d;
 	matrix_set_up(&d, n, m, d_entries, d_permutation);
 
-	set_test(a);
-	printf("\ntest matrix:\n");
-	matrix_print(a);
-	matrix_copy(c, a);
+	for (unsigned i = 0; NUM_TEST_RUNS > i; i++) {
+		matirx_random_pos_def(a, b, c, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
+		matrix_copy(c, a);
 
-	matrix_lup_decompose(a);
-	printf("\ntest matrix lu decompose (l and u in one, ones of l omitted on diagonal):\n");
-	matrix_print(a);
+		double tmp1[N_ROWS];
+		double tmp2[N_ROWS];
+		matrix_invert(a, b, tmp1, tmp2);
 
-	double tmp1[N_ROWS];
-	double tmp2[N_ROWS];
-	matrix_invert(a, b, tmp1, tmp2);
-	printf("inverse of the test matrix\n");
-	matrix_print(a);
-
-	matrix_mult(d, a, c);
-	printf("this should give the identity\n");
-	matrix_print(d);
+		matrix_mult(d, a, c);
+		if (!almost_identity(d, TEST_PRECISION))
+			printf("error\n");
+	}
 
 	return EXIT_SUCCESS;
 }

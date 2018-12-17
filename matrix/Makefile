@@ -4,9 +4,10 @@ OBJ = $(addsuffix .o, $(basename $(SRC)))
 
 CC = clang
 CFLAGS = -Wall -Wextra -pedantic -O2 -std=c99
+MATH = -lm
 
 $(OUT): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o $@
+	$(CC) $(CFLAGS) $(OBJ) -o $@ $(MATH)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

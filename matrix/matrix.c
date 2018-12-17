@@ -266,6 +266,8 @@ void matrix_invert(struct _matrix m,
 	double t;
 	unsigned * permutation = m.permutation;
 
+	matrix_lup_decompose(m);
+
 	for (n = 0; nrows > n; n++)
 		a[n] = b[n] = 0;
 
@@ -311,4 +313,29 @@ void matrix_print(struct _matrix m)
 		printf("\n");
 	}
 	printf("\n");
+}
+
+double random_number(double min, double max)
+{
+	double r = rand();
+	return min + r * (max - min) / (double)RAND_MAX;
+}
+
+void matrix_random(struct _matrix m, double min, double max)
+{
+	unsigned nrows = m.nrows;
+	unsigned ncols = m.ncols;
+	for (unsigned i = 0; nrows > i; i++)
+		for (unsigned j = 0; ncols > j; j++)
+			matrix_set_entry(m, i, j, random_number(min, max));
+}
+
+void matirx_random_pos_def(struct _matrix a,
+		struct _matrix b, struct _matrix c, double min, double max)
+{
+	/* TODO check rank */
+	matrix_random(b, min, max);
+	matrix_copy(c, b);
+	matrix_trans(b);
+	matrix_mult(a, b, c);
 }

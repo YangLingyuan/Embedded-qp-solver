@@ -30,6 +30,8 @@ void matrix_set_up(struct _matrix * m, unsigned nrows,
 double matrix_get_entry(struct _matrix m, unsigned row, unsigned col);
 void matrix_set_entry(struct _matrix m,
                       unsigned row, unsigned col, double val);
-
+void matrix_random(struct _matrix m, double min, double max);
+void matirx_random_pos_def(struct _matrix a,
+		struct _matrix b, struct _matrix c, double min, double max);
 
 #endif /* MATRIX_H */
