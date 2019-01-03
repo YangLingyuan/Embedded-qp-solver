@@ -6,7 +6,14 @@
 #define ADD 1U
 #define SUB 0U
 
+#define ABS(x) (0 > (x) ? -(x) : (x))
+
 #define NERVOUS
+
+struct _pivot {
+	double pivot;
+	unsigned pivot_idx;
+};
 
 double __inline
 matrix_get_entry(struct _matrix m, unsigned row, unsigned col)
@@ -36,22 +43,22 @@ void __inline
 matrix_swap_entries(struct _matrix m,
 		unsigned row1, unsigned col1, unsigned row2, unsigned col2) 
 {
-	double a1 = matrix_get_entry(m, col1, row1);
-	double a2 = matrix_get_entry(m, col2, row2);
-	matrix_set_entry(m, col1, row1, a2);
-	matrix_set_entry(m, col2, row2, a1);
+	double a1 = matrix_get_entry(m, row1, col1);
+	double a2 = matrix_get_entry(m, row2, col2);
+	matrix_set_entry(m, row1, col1, a2);
+	matrix_set_entry(m, row2, col2, a1);
 }
 
 void __inline
 matrix_negate_entry(struct _matrix m, unsigned row, unsigned col)
 {
-	double tmp = (-1) * matrix_get_entry(m, row, col);
+	double tmp = -matrix_get_entry(m, row, col);
 	matrix_set_entry(m, row, col, tmp);
 }
 
 void
-matrix_set_up(struct _matrix * m, unsigned nrows, unsigned ncols,
-		             double * elements, unsigned * permutation)
+matrix_set_up(struct _matrix * m, unsigned nrows,
+                                  unsigned ncols, double * elements)
 {
 #ifdef NERVOUS
 	if (!m) {
@@ -64,18 +71,11 @@ matrix_set_up(struct _matrix * m, unsigned nrows, unsigned ncols,
 				"array pointer in matrix_set_up\n");
 		return;
 	}
-	if (!permutation) {
-		fprintf(stderr, "invalid matrix permutation "
-				"array pointer in matrix_set_up\n");
-		return;
-	}
-
 #endif
 
 	m->nrows = nrows;
 	m->ncols = ncols;
 	m->elements = elements;
-	m->permutation = permutation;
 }
 
 static unsigned __inline
@@ -196,7 +196,7 @@ void matrix_trans(struct _matrix m)
 	unsigned nrows = m.nrows;
 	unsigned ncols = m.ncols;
 	for (unsigned i = 0; nrows > i; i++)
-		for (unsigned j = i+1; ncols > j; j++)
+		for (unsigned j = i + 1; ncols > j; j++)
 			matrix_swap_entries(m, i, j, j, i);
 }
 
@@ -209,45 +209,67 @@ void matrix_neg(struct _matrix m)
 			matrix_negate_entry(m, i, j);
 }
 
-void matrix_lup_decompose(struct _matrix m)
+static void __inline
+permutation_swap(unsigned * permutation, unsigned i, unsigned j)
 {
-	unsigned i, j, k, kd = 0, T;
-	double p, t, tmp;
-	unsigned * permutation = m.permutation;
+#ifdef NERVOUS
+	if (!permutation) {
+		fprintf(stderr, "invalid permutation in permutation_swap");
+		return;
+	}
+#endif
 
-	for (i = 0; m.nrows > i; i++)
-		permutation[i] = i;
+	double tmp = permutation[i];
+	permutation[i] = permutation[j];
+	permutation[j] = tmp;
+}
 
-	for (k = 0; m.nrows - 1 > k; k++) {
-		p = 0;
-		for (i = k; m.nrows > i; i++) {
-			t = matrix_get_entry(m, i, k);
-			if(t < 0)
-				t *= -1;
-			if(t > p) {
-				p = t;
-				kd = i;
-			}
+static struct _pivot
+matrix_lup_pivot(struct _matrix m, unsigned k)
+{
+	double pivot = 0;
+	unsigned pivot_idx = 0;
+
+	for (unsigned i = k; m.nrows > i; i++) {
+		double tmp = matrix_get_entry(m, i, k);
+		tmp = ABS(tmp);
+		if(tmp > pivot) {
+			pivot = tmp;
+			pivot_idx = i;
 		}
-		if(!p) {
+	}
+
+	return (struct _pivot){ .pivot = pivot, .pivot_idx = pivot_idx, };
+}
+
+static void matrix_lup_decompose(struct _matrix m, unsigned * permutation)
+{
+#ifdef NERVOUS
+	if (!permutation) {
+		fprintf(stderr, "invalid permutation in matrix_lup_decompose");
+		return;
+	}
+#endif
+
+	for (unsigned k = 0; m.nrows > k + 1; k++) {
+
+		struct _pivot pivot = matrix_lup_pivot(m, k);
+		if(!pivot.pivot) {
 			fprintf(stderr, "singular matrix "
 					"in matrix_lup_decompose\n");
 			return;
 		}
-		T = permutation[kd];
-		permutation[kd] = permutation[k];
-		permutation[k] = T;
-		for (i = 0; m.nrows > i; i++) {
-		     t = matrix_get_entry(m, kd, i);
-		     tmp = matrix_get_entry(m, k, i);
-		     matrix_set_entry(m, kd, i, tmp);
-		     matrix_set_entry(m, k, i, t);
-		}
-		for (i = k+1; m.nrows > i; i++) {
-			tmp = matrix_get_entry(m, i, k);
+
+		permutation_swap(permutation, pivot.pivot_idx, k);
+		
+		for (unsigned i = 0; m.nrows > i; i++)
+			matrix_swap_entries(m, pivot.pivot_idx, i, k, i);
+
+		for (unsigned i = k + 1; m.nrows > i; i++) {
+			double tmp = matrix_get_entry(m, i, k);
 			tmp /= matrix_get_entry(m, k, k);
 			matrix_set_entry(m, i, k, tmp);
-			for (j = k+1; m.nrows > j; j++) {
+			for (unsigned j = k + 1; m.nrows > j; j++) {
 				tmp = matrix_get_entry(m, i, j);
 				tmp -= matrix_get_entry(m, i, k)
 				       * matrix_get_entry(m, k, j);
@@ -258,47 +280,52 @@ void matrix_lup_decompose(struct _matrix m)
 	return;
 }
 
-void matrix_invert(struct _matrix m,
-		   struct _matrix tmp, double * a, double * b)
+void matrix_invert(struct _matrix m, struct _matrix tmp)
 {
-	int nrows = (int)m.nrows;
-	int i, j, n, k;
-	double t;
-	unsigned * permutation = m.permutation;
+#ifdef NERVOUS
+	if (!(m.nrows <= tmp.nrows) || !(m.ncols <= tmp.ncols)) {
+		fprintf(stderr, "invalid matrix tmporary "
+				"matrix pair in matrix_lup_decompose");
+		return;
+	}
+#endif
 
-	matrix_lup_decompose(m);
+	unsigned nrows = m.nrows;
+	double v[MATRIX_ROWS];
+	double w[MATRIX_ROWS];
+	for (unsigned n = 0; nrows > n; n++)
+		v[n] = w[n] = 0;
+	unsigned permutation[MATRIX_ROWS];
+	for (unsigned i = 0; m.nrows > i; i++)
+		permutation[i] = i;
 
-	for (n = 0; nrows > n; n++)
-		a[n] = b[n] = 0;
+	matrix_lup_decompose(m, permutation);
 
-	for (i = 0; nrows > i; i++) {
-		for(j = 0; nrows > j; j++)
+	for (unsigned i = 0; nrows > i; i++) {
+		for(unsigned j = 0; nrows > j; j++)
 			matrix_set_entry(tmp, i, j, 0);
 		matrix_set_entry(tmp, i, i, 1);
 
-		for (n = 0; nrows > n; n++) {
-			t = 0;
-			for (k = 0; n-1 >= k; k++)
-				t += matrix_get_entry(m, n, k) * b[k];
-			b[n] = matrix_get_entry(tmp, i, permutation[n]) - t;
+		for (unsigned n = 0; nrows > n; n++) {
+			double t = 0;
+			for (unsigned k = 0; n >= k + 1; k++)
+				t += matrix_get_entry(m, n, k) * w[k];
+			w[n] = matrix_get_entry(tmp, i, permutation[n]) - t;
 		}
 
-		for (n = nrows - 1; 0 <= n; n--) {
-			t = 0;
-			for(k = n+1; nrows > k; k++)
-				t += matrix_get_entry(m, n, k) * a[k];
-			a[n] = (b[n] - t) / matrix_get_entry(m, n, n);
+		for (unsigned n = nrows - 1; 1 <= n + 1; n--) {
+			double t = 0;
+			for(unsigned k = n+1; nrows > k; k++)
+				t += matrix_get_entry(m, n, k) * v[k];
+			v[n] = (w[n] - t) / matrix_get_entry(m, n, n);
 		}
 
-		for (j = 0; nrows > j; j++)
-			matrix_set_entry(tmp, i, j, a[j]);
+		for (unsigned j = 0; nrows > j; j++)
+			matrix_set_entry(tmp, i, j, v[j]);
 	}
 
-	for (i = 0; nrows > i; i++)
-		for (j = 0; nrows > j; j++) {
-			t = matrix_get_entry(tmp, j, i);
-			matrix_set_entry(m, i, j, t);
-		}
+	matrix_trans(tmp);
+	matrix_copy(m, tmp);
 
 	return;
 }
@@ -315,7 +342,7 @@ void matrix_print(struct _matrix m)
 	printf("\n");
 }
 
-double random_number(double min, double max)
+static double random_number(double min, double max)
 {
 	double r = rand();
 	return min + r * (max - min) / (double)RAND_MAX;

@@ -1,19 +1,20 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+#define MATRIX_NUMBER 16
+#define MATRIX_ROWS 256
+#define MATRIX_COLUMNS 256
+
 struct _matrix {
 	unsigned nrows;
 	unsigned ncols;
 	double * elements;
-	unsigned * permutation;
 };
 
 /* unary operations on matrices */
 void matrix_trans(struct _matrix m);
 void matrix_neg(struct _matrix m);
-void matrix_invert(struct _matrix m,
-		   struct _matrix tmp, double * a, double * b);
-void matrix_lup_decompose(struct _matrix m);
+void matrix_invert(struct _matrix m, struct _matrix tmp);
 /* binary operations */
 void matrix_add(struct _matrix sum,
 		struct _matrix a, struct _matrix b);
@@ -26,9 +27,9 @@ void matrix_print(struct _matrix m);
 void matrix_zero_up(struct _matrix m);
 void matrix_copy(struct _matrix a, struct _matrix b);
 void matrix_set_up(struct _matrix * m, unsigned nrows,
-		unsigned ncols, double * elements, unsigned * permutation);
+                                  unsigned ncols, double * elements);
 double matrix_get_entry(struct _matrix m, unsigned row, unsigned col);
-void matrix_set_entry(struct _matrix m,
+void matrix_set_entry(struct _matrix m, 
                       unsigned row, unsigned col, double val);
 void matrix_random(struct _matrix m, double min, double max);
 void matirx_random_pos_def(struct _matrix a,
