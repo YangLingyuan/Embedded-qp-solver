@@ -1,18 +1,55 @@
 OUT = test
-SRC = matrix.c test.c
-OBJ = $(addsuffix .o, $(basename $(SRC)))
 
+OBJ_DIR = obj
+
+DEP_DIR = dep
+
+INTERREST := $(shell find . | grep \\.[hcS]$)
+
+SRC = $(filter %.c %.S, $(INTERREST))
+
+OBJ = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
+
+DEP = $(addprefix $(DEP_DIR)/, $(addsuffix .d, $(basename $(notdir $(SRC)))))
+
+INC = $(addprefix -I , $(sort $(dir $(filter %.h, $(INTERREST)))))
+VPATH = $(sort $(dir $(SRC)))
+
+#DEBUG
+#$(info $$SRC is [${SRC}])
+#$(info $$OBJ is [${OBJ}])
+#$(info $$DEP is [${DEP}])
+#$(info $$INC is [${INC}])
+#$(info $$VPATH is [${VPATH}])
+
+# Konfiguration
 CC = clang
 CFLAGS = -Wall -Wextra -pedantic -O2 -std=c99
-MATH = -lm
+CPPFLAGS = $(INC)
 
+# Regeln
+.PHONY: all
+all: test
+
+-include $(DEP)
+
+# generate dependencies
+$(DEP_DIR)/%.d: %.c
+	@set -e; rm -f $@; \
+	$(CC) -MM $(CPPFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+# build objects
+$(OBJ_DIR)/%.o: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+# build out
 $(OUT): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o $@ $(MATH)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) -o $@ $(OBJ)
 
 .PHONY: clean
 clean:
 	rm -f $(OUT)
 	rm -f $(OBJ)
+	rm -f $(DEP)
