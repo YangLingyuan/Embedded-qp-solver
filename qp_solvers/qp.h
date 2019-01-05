@@ -14,6 +14,7 @@ struct _quadratic_form {
 
 struct _quadratic_form * 
 quadratic_form_alloc(struct _matrix * p, struct _matrix * q, double r);
+/* WILL NOT FREE MATRICES IN QUADRATIC FORM !!! TAKE CARE URSELF !!! */
 void quadratic_form_free(struct _quadratic_form * qf);
 /* gives f(x) (scalar) */
 double

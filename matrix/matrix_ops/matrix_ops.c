@@ -576,7 +576,7 @@ void matrix_print(struct _matrix * m)
 	unsigned ncols = m->dimensions[COLUMN];
 	for (unsigned i = 0; nrows > i; i++) {
 		for (unsigned j = 0; ncols > j; j++)
-			printf("%g ", matrix_get_entry(m, ME(i, j)));
+			printf("%e ", matrix_get_entry(m, ME(i, j)));
 		printf("\n");
 	}
 	printf("\n");
