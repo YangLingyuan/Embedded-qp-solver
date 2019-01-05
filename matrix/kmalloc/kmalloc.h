@@ -9,6 +9,7 @@
 enum kmalloc_type {
 	NxN,
 	Nx1,
+	QUADRATIC_FORM,
 	KMALLOC_TYPE_END,
 };
 

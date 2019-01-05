@@ -26,5 +26,6 @@ void matrix_set_entry(struct _matrix * m, struct _matrix_entry, double val);
 void matrix_random(struct _matrix * m, double min, double max);
 void matirx_random_pos_def(struct _matrix * a, double min, double max);
 struct _matrix * matrix_alloc(enum kmalloc_type type);
+void matrix_free(struct _matrix * m);
 
 #endif

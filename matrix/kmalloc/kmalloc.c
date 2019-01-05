@@ -1,7 +1,10 @@
 #include <string.h>
+
 #include "kmalloc.h"
-#include "matrix_type.h"
 #include "klist.h"
+
+#include "matrix_type.h"
+#include "qp.h"
 
 /* to be appended to any type */
 struct _km_header {
@@ -19,6 +22,10 @@ struct _km_Nx1 {
 	struct _matrix val;
 	double elements[N * 1];
 };
+struct _km_QUADRATIC_FORM {
+	struct _km_header h;
+	struct _quadratic_form val;
+};
 
 unsigned km_size[KMALLOC_TYPE_END];
 
@@ -29,6 +36,7 @@ unsigned km_size[KMALLOC_TYPE_END];
 
 static struct _km_NxN NxN_bucket[NxN_MAX];
 static struct _km_Nx1 Nx1_bucket[Nx1_MAX];
+static struct _km_QUADRATIC_FORM QUADRATIC_FORM_bucket[QUADRATIC_FORM_MAX];
 
 static struct _klist * km_used[KMALLOC_TYPE_END];
 static struct _klist * km_unused[KMALLOC_TYPE_END];
@@ -52,6 +60,10 @@ void kmalloc_init(void)
 		km_insert(&bucket_element->h.link, &km_unused[Nx1]);
 		bucket_element->val.elements = bucket_element->elements;
 	}
+	km_size[QUADRATIC_FORM] = sizeof(struct _km_QUADRATIC_FORM);
+	for (unsigned i = 0; QUADRATIC_FORM_MAX > i; i++)
+		km_insert(&QUADRATIC_FORM_bucket[i].h.link,
+				        &km_unused[QUADRATIC_FORM]);
 }
 
 static void km_insert(struct _klist * me, struct _klist ** list)

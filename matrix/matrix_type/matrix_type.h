@@ -11,6 +11,10 @@
 #define NxN_MAX 16
 #define Nx1_MAX 16
 
+/* since struct _matrix_entry is convenient from an implementation point */
+/* of view but cumbersome when using the api, ME stands for matrix entry */
+#define ME(i, j) ((struct _matrix_entry) {(i), (j)})
+
 /* structures related to matrices */
 struct _matrix {
 	unsigned dimensions[NUMBER_DIMENSIONS];

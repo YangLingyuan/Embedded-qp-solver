@@ -21,7 +21,7 @@ struct _pivot {
 
 struct _matrix * matrix_alloc(enum kmalloc_type type)
 {
-	/* to alloc a matrix use this, to free use kfree(matrix, type) */
+	/* to alloc a matrix use this, to free use matrix_free(matrix) */
 	/* this just adjusts the dimensions, the elements pointer */
 	/* is set in kmalloc and we rely on them not being changed */
 	if (NxN != type && Nx1 != type) {
@@ -41,6 +41,25 @@ struct _matrix * matrix_alloc(enum kmalloc_type type)
 		new->dimensions[COLUMN] = 1;
 	}
 	return new;
+}
+
+void matrix_free(struct _matrix * m)
+{
+#ifdef NERVOUS
+	if (!m) {
+		fprintf(stderr, "invalid matrix in matrix_free\n");
+		return;
+	}
+#endif
+	/* supporting NxN and Nx1 right now */
+	unsigned nrows = m->dimensions[ROW];
+	unsigned ncols = m->dimensions[COLUMN];
+	if (N == nrows && N == ncols)
+		kfree(m, NxN);
+	else if ((1 == nrows && N == ncols) || (N == nrows && 1 == ncols))
+		kfree(m, Nx1);
+	else
+		fprintf(stderr, "no such matrix type in matrix_free\n");
 }
 
 static unsigned
@@ -154,15 +173,10 @@ matrix_scalar_mult_intern(struct _matrix * a, struct _matrix * b, double s)
 	double tmp = 0;
 	unsigned nrows = a->dimensions[ROW];
 	unsigned ncols = a->dimensions[COLUMN];
-	struct _matrix_entry entry;
 	for (unsigned i = 0; nrows > i; i++)
 		for (unsigned j = 0; ncols > j; j++) {
-			entry = (struct _matrix_entry) {
-				.row = i,
-				.col = j,
-			};
-			tmp = s * matrix_get_entry(b, entry);
-			matrix_set_entry(a, entry, tmp);
+			tmp = s * matrix_get_entry(b, ME(i, j));
+			matrix_set_entry(a, ME(i, j), tmp);
 		}
 }
 
@@ -221,13 +235,10 @@ void matrix_mult(struct _matrix * prod,
 		for (unsigned j = 0; ncols > j; j++) {
 			acc = 0;
 			for (unsigned k = 0; k_run > k; k++) {
-				acc += matrix_get_entry(a,
-					(struct _matrix_entry) {i, k})
-				       * matrix_get_entry(b,
-					(struct _matrix_entry) {k, j});
+				acc += matrix_get_entry(a, ME(i, k))
+				       * matrix_get_entry(b, ME(k, j));
 			}
-			matrix_set_entry(prod,
-				(struct _matrix_entry) {i, j}, acc);
+			matrix_set_entry(prod, ME(i, j), acc);
 		}
 }
 
@@ -254,34 +265,26 @@ double matrix_scalar_prod(struct _matrix * a, struct _matrix * b)
 	    && 1 < b_row && 1 == b_col
 	               && a_row == b_row) {
 		for (unsigned k = 0; a_row > k; k++)
-			acc += matrix_get_entry(a,
-				(struct _matrix_entry) {k, 0})
-			       * matrix_get_entry(b,
-				(struct _matrix_entry) {k, 0});
+			acc += matrix_get_entry(a, ME(k, 0))
+			       * matrix_get_entry(b, ME(k, 0));
 	} else if (1 == a_row && 1 < a_col
 		    && 1 == b_row && 1 < b_col
 	                       && a_col == b_col) {
 		for (unsigned k = 0; a_col > k; k++)
-			acc += matrix_get_entry(a,
-				(struct _matrix_entry) {0, k})
-			       * matrix_get_entry(b,
-				(struct _matrix_entry) {0, k});
+			acc += matrix_get_entry(a, ME(0, k))
+			       * matrix_get_entry(b, ME(0, k));
 	} else if (1 < a_row && 1 == a_col
 		    && 1 == b_row && 1 < b_col
 	                       && a_row == b_col) {
 		for (unsigned k = 0; a_row > k; k++)
-			acc += matrix_get_entry(a,
-				(struct _matrix_entry) {k, 0})
-			       * matrix_get_entry(b,
-				(struct _matrix_entry) {0, k});
+			acc += matrix_get_entry(a, ME(k, 0))
+			       * matrix_get_entry(b, ME(0, k));
 	} else if (1 == a_row && 1 < a_col
 		    && 1 < b_row && 1 == b_col
 	                       && a_col == b_row) {
 		for (unsigned k = 0; a_col > k; k++)
-			acc += matrix_get_entry(a,
-				(struct _matrix_entry) {0, k})
-			       * matrix_get_entry(b,
-				(struct _matrix_entry) {k, 0});
+			acc += matrix_get_entry(a, ME(0, k))
+			       * matrix_get_entry(b, ME(k, 0));
 	} else {
 		fprintf(stderr, "invalid arguments in matrix_scalar_prod"
 				"no combination of dimensions matches\n");
@@ -320,16 +323,11 @@ matrix_add_sub(struct _matrix * sum,
 	unsigned ncols = sum->dimensions[COLUMN];
 	double aa = 0;
 	double bb = 0;
-	struct _matrix_entry entry;
 	for (unsigned i = 0; nrows > i; i++)
 		for (unsigned j = 0; ncols > j; j++) {
-			entry = (struct _matrix_entry) {
-				.row = i,
-				.col = j,
-			};
-			aa = matrix_get_entry(a, entry);
-			bb = matrix_get_entry(b, entry);
-			matrix_set_entry(sum, entry,
+			aa = matrix_get_entry(a, ME(i, j));
+			bb = matrix_get_entry(b, ME(i, j));
+			matrix_set_entry(sum, ME(i, j),
 					ADD == add_sub ? aa + bb : aa - bb);
 		}
 }
@@ -362,12 +360,8 @@ void matrix_trans(struct _matrix * m)
 
 	for (unsigned i = 0; nrows > i; i++)
 		for (unsigned j = i + 1; ncols > j; j++) {
-			struct _matrix_entry entry = {
-				.row = i,
-				.col = j,
-			};
-			matrix_swap_entries(m, entry,
-					swap_matrix_entry(entry));
+			matrix_swap_entries(m, ME(i, j),
+					swap_matrix_entry(ME(i, j)));
 		}
 }
 
@@ -394,13 +388,8 @@ matrix_lup_pivot(struct _matrix * m, unsigned k)
 
 	double tmp = 0;
 	unsigned nrows = m->dimensions[ROW];
-	struct _matrix_entry entry;
 	for (unsigned i = k; nrows > i; i++) {
-		entry = (struct _matrix_entry) {
-			.row = i,
-			.col = k,
-		};
-		tmp = matrix_get_entry(m, entry);
+		tmp = matrix_get_entry(m, ME(i, k));
 		tmp = ABS(tmp);
 		if(tmp > pivot) {
 			pivot = tmp;
@@ -425,11 +414,8 @@ matrix_row_permute(struct _matrix * m, unsigned row1, unsigned row2)
 #endif
 
 	unsigned ncols = m->dimensions[COLUMN];
-	for (unsigned j = 0; ncols > j; j++) {
-		struct _matrix_entry row1j = { row1, j, };
-		struct _matrix_entry row2j = { row2, j, };
-		matrix_swap_entries(m, row1j, row2j);
-	}
+	for (unsigned j = 0; ncols > j; j++)
+		matrix_swap_entries(m, ME(row1, j), ME(row2, j));
 }
 
 static void matrix_lup_decompose(struct _matrix * m, unsigned * permutation)
@@ -469,18 +455,14 @@ static void matrix_lup_decompose(struct _matrix * m, unsigned * permutation)
 
 		/* solve for entries, one after another */
 		for (unsigned i = k + 1; nrows > i; i++) {
-			struct _matrix_entry ik = { i, k, };
-			struct _matrix_entry kk = { k, k, };
-			double tmp = matrix_get_entry(m, ik);
-			tmp /= matrix_get_entry(m, kk);
-			matrix_set_entry(m, ik, tmp);
+			double tmp = matrix_get_entry(m, ME(i, k));
+			tmp /= matrix_get_entry(m, ME(k, k));
+			matrix_set_entry(m, ME(i, k), tmp);
 			for (unsigned j = k + 1; nrows > j; j++) {
-				struct _matrix_entry ij = { i, j, };
-				struct _matrix_entry kj = { k, j, };
-				tmp = matrix_get_entry(m, ij);
-				tmp -= matrix_get_entry(m, ik)
-				       * matrix_get_entry(m, kj);
-				matrix_set_entry(m, ij, tmp);
+				tmp = matrix_get_entry(m, ME(i, j));
+				tmp -= matrix_get_entry(m, ME(i, k))
+				       * matrix_get_entry(m, ME(k, j));
+				matrix_set_entry(m, ME(i, j), tmp);
 			}
 		}
 	}
@@ -496,17 +478,22 @@ static void matrix_zero_row(struct _matrix * m, unsigned row)
 	}
 #endif
 	unsigned ncols = m->dimensions[COLUMN];
-	for(unsigned j = 0; ncols > j; j++) {
-		struct _matrix_entry ij = { row, j, };
-		matrix_set_entry(m, ij, 0);
-	}
+	for(unsigned j = 0; ncols > j; j++)
+		matrix_set_entry(m, ME(row, j), 0);
 }
 
 void matrix_invert(struct _matrix * m)
 {
+	/* only supporting NxN right now (not MxM where M != N) */
 #ifdef NERVOUS
 	if (!m || !m->elements) {
 		fprintf(stderr, "invalid matrix in matrix_invert");
+		return;
+	}
+	if ((N != m->dimensions[ROW]) || (N != m->dimensions[COLUMN])) {
+		fprintf(stderr, "invalid matrix "
+				"in matrix_invert "
+				"expecting NxN matrix\n");
 		return;
 	}
 	if (m->dimensions[ROW] != m->dimensions[COLUMN]) {
@@ -541,43 +528,37 @@ void matrix_invert(struct _matrix * m)
 	for (unsigned i = 0; nrows > i; i++) {
 		matrix_zero_row(tmp, i);
 		matrix_set_entry(tmp,
-				(struct _matrix_entry) {i, i} , 1);
+				ME(i, i) , 1);
 
 		for (unsigned n = 0; nrows > n; n++) {
 			double t = 0;
 			for (unsigned k = 0; k + 1 <= n; k++)
-				t += matrix_get_entry(m,
-					(struct _matrix_entry) {n, k})
+				t += matrix_get_entry(m, ME(n, k))
 					                * scratchpad[W][k];
 			scratchpad[W][n] = matrix_get_entry(tmp,
-			(struct _matrix_entry) {i, permutation[n]}) - t;
+			                         ME(i, permutation[n])) - t;
 		}
 
 		for (unsigned n = nrows - 1; 1 <= n + 1; n--) {
 			double t = 0;
 			for(unsigned k = n + 1; nrows > k; k++)
-				t += matrix_get_entry(m,
-					(struct _matrix_entry) {n, k})
+				t += matrix_get_entry(m, ME(n, k))
 					                * scratchpad[V][k];
 			scratchpad[V][n] = (scratchpad[W][n] - t)
-				        / matrix_get_entry(m,
-					(struct _matrix_entry) {n, n});
+				        / matrix_get_entry(m, ME(n, n));
 		}
 
 		for (unsigned j = 0; nrows > j; j++)
-			matrix_set_entry(tmp,
-			(struct _matrix_entry) {i, j}, scratchpad[V][j]);
+			matrix_set_entry(tmp, ME(i, j), scratchpad[V][j]);
 	}
 
 	for (unsigned i = 0; nrows > i; i++)
 		for (unsigned j = 0; nrows > j; j++) {
-			struct _matrix_entry ij = { i, j, };
-			struct _matrix_entry ji = { j, i, };
-			double t = matrix_get_entry(tmp, ji);
-			matrix_set_entry(m, ij, t);
+			double t = matrix_get_entry(tmp, ME(j, i));
+			matrix_set_entry(m, ME(i, j), t);
 		}
 
-	kfree(tmp, NxN);
+	matrix_free(tmp);
 
 	return;
 }
@@ -594,10 +575,8 @@ void matrix_print(struct _matrix * m)
 	unsigned nrows = m->dimensions[ROW];
 	unsigned ncols = m->dimensions[COLUMN];
 	for (unsigned i = 0; nrows > i; i++) {
-		for (unsigned j = 0; ncols > j; j++) {
-			struct _matrix_entry ij = { i, j, };
-			printf("%g ", matrix_get_entry(m, ij));
-		}
+		for (unsigned j = 0; ncols > j; j++)
+			printf("%g ", matrix_get_entry(m, ME(i, j)));
 		printf("\n");
 	}
 	printf("\n");
@@ -621,11 +600,9 @@ void matrix_random(struct _matrix * m, double min, double max)
 	unsigned nrows = m->dimensions[ROW];
 	unsigned ncols = m->dimensions[COLUMN];
 	for (unsigned i = 0; nrows > i; i++)
-		for (unsigned j = 0; ncols > j; j++) {
-			struct _matrix_entry ij = { i, j, };
-			matrix_set_entry(m, ij,
-					        random_number(min, max));
-		}
+		for (unsigned j = 0; ncols > j; j++)
+			matrix_set_entry(m, ME(i, j),
+					 random_number(min, max));
 }
 
 void matirx_random_pos_def(struct _matrix * m, double min, double max)
@@ -657,6 +634,6 @@ void matirx_random_pos_def(struct _matrix * m, double min, double max)
 	matrix_trans(b);
 	matrix_mult(m, b, c);
 
-	kfree(b, NxN);
-	kfree(c, NxN);
+	matrix_free(b);
+	matrix_free(c);
 }
