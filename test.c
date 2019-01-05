@@ -115,7 +115,8 @@ void mult_test(void)
 	matrix_trans(c);
 	matrix_trans(d);
 
-	if (14 != matrix_scalar_prod(d, c))
+	double should_be = (N*(N+1)*(2*N+1)/6) - N*N;
+	if (should_be != matrix_scalar_prod(d, c))
 		fprintf(stderr, "error in mult test\n");
 
 	matrix_free(a);
