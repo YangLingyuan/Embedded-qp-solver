@@ -3,7 +3,7 @@
 #include "qp.h"
 #include "kmalloc.h"
 
-static double
+double
 quadratic_form_eval(struct _quadratic_form * qf, struct _matrix * x)
 {
 	/* gives (1/2) x^T.p.x + q^T.x + r */
@@ -23,7 +23,7 @@ quadratic_form_eval(struct _quadratic_form * qf, struct _matrix * x)
 	return a;
 }
 
-static struct _matrix *
+struct _matrix *
 quadratic_form_eval_grad(struct _quadratic_form * qf, struct _matrix * x)
 {
 	/* gives p.x + q, which is a Nx1 matrix (vector), */
@@ -46,8 +46,6 @@ static void quadratic_form_init(struct _quadratic_form * qf,
 	qf->p = p;
 	qf->q = q;
 	qf->r = r;
-	qf->eval = quadratic_form_eval;
-	qf->eval_grad = quadratic_form_eval_grad;
 }
 
 struct _quadratic_form * 

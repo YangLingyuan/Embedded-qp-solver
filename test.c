@@ -55,11 +55,11 @@ unsigned armijo(struct _quadratic_form * qf, struct _matrix * x,
 #endif
 	matrix_add(tmp, x, dk_alpha);
 
-	lhs = qf->eval(qf, tmp);
+	lhs = quadratic_form_eval(qf, tmp);
 
-	struct _matrix * qf_grad = qf->eval_grad(qf, x);
+	struct _matrix * qf_grad = quadratic_form_eval_grad(qf, x);
 	rhs += c2 * alpha * matrix_scalar_prod(qf_grad, dk);
-	rhs += qf->eval(qf, x);
+	rhs += quadratic_form_eval(qf, x);
 
 	matrix_free(qf_grad);
 	matrix_free(dk_alpha);
@@ -158,7 +158,7 @@ int main(void)
 	double c2 = 0.9;
 
 	for (unsigned i = 0; ITERATIONS > i; i++) {
-		tmp = qf->eval_grad(qf, x);
+		tmp = quadratic_form_eval_grad(qf, x);
 		matrix_mult(dk, h2_inv, tmp);
 		matrix_free(tmp);
 		alpha = line_search(qf, x, dk, c1, c2);
