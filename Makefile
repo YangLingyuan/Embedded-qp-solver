@@ -46,7 +46,7 @@ $(OBJ_DIR)/%.o: %.c
 
 # build out
 $(OUT): $(OBJ)
-	$(CC) -o $@ $(OBJ)
+	$(CC) -o $@ $(OBJ) -lm
 
 .PHONY: clean
 clean:

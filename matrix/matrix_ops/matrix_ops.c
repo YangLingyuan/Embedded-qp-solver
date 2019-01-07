@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 #include "matrix_ops.h"
 
@@ -118,6 +120,7 @@ matrix_swap_entries(struct _matrix * m,
 	matrix_set_entry(m, entry2, val1);
 }
 
+#ifdef NERVOUS
 static unsigned
 matrix_mult_dimension_compatible(struct _matrix * prod,
 				struct _matrix * a, struct _matrix * b)
@@ -131,7 +134,9 @@ matrix_mult_dimension_compatible(struct _matrix * prod,
 		return 0;
 	return 1;
 }
+#endif
 
+#ifdef NERVOUS
 static unsigned
 matrix_sum_dimension_compatible(struct _matrix * sum,
 				struct _matrix * a, struct _matrix * b)
@@ -146,6 +151,7 @@ matrix_sum_dimension_compatible(struct _matrix * sum,
 	}
 	return 1;
 }
+#endif
 
 static void
 matrix_scalar_mult_intern(struct _matrix * a, struct _matrix * b, double s)
@@ -563,6 +569,32 @@ void matrix_invert(struct _matrix * m)
 	return;
 }
 
+double matrix_norm(struct _matrix * m)
+{
+#ifdef NERVOUS
+	if (!m || !m->elements) {
+		fprintf(stderr, "invalid matrix in matrix_norm");
+		return 0;
+	}
+	if (N != m->dimensions[ROW] && 1 != m->dimensions[COLUMN]) {
+		fprintf(stderr, "invalid matrix in "
+				"matrix_norm, only Nx1 supported");
+		return 0;
+	}
+#endif
+
+	/* only Nx1 supported so far */
+	double acc = 0;
+	double tmp = 0;
+	for (unsigned k = 0; N > k; k++) {
+		tmp = matrix_get_entry(m, ME(k, 0));
+		tmp *= tmp;
+		acc += tmp;
+	}
+
+	return sqrt(acc);
+}
+
 void matrix_print(struct _matrix * m)
 {
 #ifdef NERVOUS
@@ -596,7 +628,7 @@ void matrix_random(struct _matrix * m, double min, double max)
 		return;
 	}
 #endif
-
+	srand((unsigned)time(0));
 	unsigned nrows = m->dimensions[ROW];
 	unsigned ncols = m->dimensions[COLUMN];
 	for (unsigned i = 0; nrows > i; i++)

@@ -8,6 +8,7 @@
 void matrix_trans(struct _matrix * m);
 void matrix_neg(struct _matrix * m);
 void matrix_invert(struct _matrix * m);
+double matrix_norm(struct _matrix * m);
 /* binary operations */
 void matrix_add(struct _matrix * sum,
 		struct _matrix * a, struct _matrix * b);
