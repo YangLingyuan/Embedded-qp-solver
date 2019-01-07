@@ -614,7 +614,7 @@ void matrix_print(struct _matrix * m)
 	printf("\n");
 }
 
-static double random_number(double min, double max)
+double random_number(double min, double max)
 {
 	double r = rand();
 	return min + r * (max - min) / (double)RAND_MAX;

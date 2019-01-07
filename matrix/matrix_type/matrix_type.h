@@ -7,7 +7,7 @@
 #define NUMBER_DIMENSIONS 2
 
 /* configure matrix types here */
-#define N 140
+#define N 32U
 #define NxN_MAX 16
 #define Nx1_MAX 16
 

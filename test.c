@@ -7,19 +7,17 @@
 #include "qp.h"
 
 #define TEST_PRECISION 1e-6
-#define NUM_INVERSION_TEST_RUNS 128
+#define NUM_INVERSION_TEST_RUNS 16
 #define RAND_ENTRY_MIN -1e4
 #define RAND_ENTRY_MAX 1e4
 
 #define C1 0.9
 #define C2 1e-4
-#define ALPHA0_GRAD 1e1
-#define ALPHA_WARM_INCREASE_GRAD 1e7
-#define ALPHA0_NEWTON 1e18
-#define ALPHA_WARM_INCREASE_NEWTON 1e7
+#define ALPHA0_GRAD 1
+#define ALPHA0_NEWTON 1
 #define NUM_OPT_TEST_RUNS 8
 
-#define MIN_GRAD 8e-1
+#define MIN_GRAD 1e-1
 #define ITERATIONS 1e6
 
 #define ABS(x) (x < 0 ? -x : x)
@@ -94,7 +92,8 @@ line_search(struct _quadratic_form * qf, struct _matrix * x,
 
 void inversion_test(void)
 {
-	for (unsigned i = 0; NUM_INVERSION_TEST_RUNS > i; i++) {
+	unsigned i = 0;
+	for (; NUM_INVERSION_TEST_RUNS > i; i++) {
 		struct _matrix * a = matrix_alloc(NxN);
 		struct _matrix * b = matrix_alloc(NxN);
 		struct _matrix * c = matrix_alloc(NxN);
@@ -109,9 +108,11 @@ void inversion_test(void)
 		matrix_free(b);
 		matrix_free(c);
 	}
+
+	printf("%u inversion tests completed\n", i);
 }
 
-void mult_test(void)
+void scalar_prod_test(void)
 {
 	struct _matrix * a = matrix_alloc(NxN);
 	for (unsigned i = 0; N > i; i++)
@@ -137,6 +138,8 @@ void mult_test(void)
 	matrix_free(b);
 	matrix_free(c);
 	matrix_free(d);
+
+	printf("scalar_prod test completed\n");
 }
 
 void
@@ -171,8 +174,7 @@ gradient_descent_with_line_search_test(struct _matrix * x0,
 
 		matrix_scalar_mult(d, -1);
 
-		alpha = line_search(qf, x, d,
-				alpha * ALPHA_WARM_INCREASE_GRAD, c1, c2);
+		alpha = line_search(qf, x, d, ALPHA0_GRAD, c1, c2);
 
 		matrix_scalar_mult(d, alpha);
 		matrix_add(x, x, d);
@@ -207,9 +209,9 @@ newton_method_with_line_search_test(struct _matrix * x0,
 
 	struct _matrix * grad_qf = 0;
 	struct _matrix * d = matrix_alloc(Nx1);
-	struct _matrix * hessian_2_inv = matrix_alloc(NxN);
-	matrix_mult(hessian_2_inv, qf->p, qf->p);
-	matrix_invert(hessian_2_inv);
+	struct _matrix * hessian_inv = matrix_alloc(NxN);
+	matrix_copy(hessian_inv, qf->p);
+	matrix_invert(hessian_inv);
 
 	for (unsigned i = 0; ITERATIONS > i; i++) {
 		grad_qf = quadratic_form_eval_grad(qf, x);
@@ -222,19 +224,18 @@ newton_method_with_line_search_test(struct _matrix * x0,
 			matrix_free(grad_qf);
 			break;
 		}
-		matrix_mult(d, hessian_2_inv, grad_qf);
+		matrix_mult(d, hessian_inv, grad_qf);
 		matrix_free(grad_qf);
 
 		matrix_scalar_mult(d, -1);
 
-		alpha = line_search(qf, x, d,
-				alpha * ALPHA_WARM_INCREASE_NEWTON, c1, c2);
+		alpha = line_search(qf, x, d, ALPHA0_NEWTON, c1, c2);
 
 		matrix_scalar_mult(d, alpha);
 		matrix_add(x, x, d);
 
 	}
-	matrix_free(hessian_2_inv);
+	matrix_free(hessian_inv);
 	matrix_free(d);
 
 	time_t end = time(0);
@@ -254,7 +255,7 @@ int main(void)
 	kmalloc_init();
 
 	inversion_test();
-	mult_test();
+	scalar_prod_test();
 
 	/* prepare quadratic cost function */
 	struct _matrix * p = matrix_alloc(NxN);
@@ -273,7 +274,7 @@ int main(void)
 	for (unsigned i = 0; NUM_OPT_TEST_RUNS > i; i++) {
 		matirx_random_pos_def(p, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
 		matrix_random(q, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
-		r = rand();
+		r = random_number(RAND_ENTRY_MIN, RAND_ENTRY_MAX);
 		matrix_random(x0, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
 		gradient_descent_with_line_search_test(x0, qf);
 		newton_method_with_line_search_test(x0, qf);
