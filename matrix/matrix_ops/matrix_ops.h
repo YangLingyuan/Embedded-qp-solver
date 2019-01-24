@@ -21,6 +21,7 @@ double matrix_scalar_prod(struct _matrix * a, struct _matrix * b);
 /* misc operations */
 void matrix_print(struct _matrix * m);
 void matrix_zero_up(struct _matrix * m);
+void matrix_identity(struct _matrix * m);
 void matrix_copy(struct _matrix * a, struct _matrix * b);
 double matrix_get_entry(struct _matrix * m, struct _matrix_entry);
 void matrix_set_entry(struct _matrix * m, struct _matrix_entry, double val);
