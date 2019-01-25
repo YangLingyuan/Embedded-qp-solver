@@ -13,12 +13,12 @@
 	do {                                                 \
 		CLRM32(n, m, word);                          \
 		((word) |= (MASK32(n, m) & ((what) << (n))));\
-	} while (0);
+	} while (0)
 #define SETM64(n, m, word, what)                             \
 	do {                                                 \
 		CLRM64(n, m, word);                          \
 		((word) |= (MASK64(n, m) & ((what) << (n))));\
-	} while (0);
+	} while (0)
 #define CLRB32(n, word) ((word) &= ~BIT32(n))
 #define CLRB64(n, word) ((word) &= ~BIT64(n))
 #define CLRM32(n, m, word) ((word) &= (~MASK32(n, m)))

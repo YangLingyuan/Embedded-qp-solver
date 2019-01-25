@@ -2,30 +2,34 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>
 
 #include "matrix_ops.h"
 #include "qp.h"
+#include "qp_solvers.h"
 
+#define TMP_FILENAME "tmp_test_file"
+#define SHELL_REF_TEST_CMD "python qp_ref.py " TMP_FILENAME
 #define TEST_PRECISION 1e-6
-#define NUM_INVERSION_TEST_RUNS 16
-#define RAND_ENTRY_MIN -1e4
-#define RAND_ENTRY_MAX 1e4
+#define NUM_INVERSION_TEST_RUNS 8
 
-#define C1 0.9
-#define C2 1e-4
-#define ALPHA0_GRAD 1
-#define ALPHA0_NEWTON 1
+#define P_RAND_ENTRY_MIN -1e3
+#define P_RAND_ENTRY_MAX 1e3
+#define Q_RAND_ENTRY_MIN -1e3
+#define Q_RAND_ENTRY_MAX 1e3
+#define X_RAND_ENTRY_MIN -1e3
+#define X_RAND_ENTRY_MAX 1e3
+
 #define NUM_OPT_TEST_RUNS 8
 
-#define MIN_GRAD 1e-1
-#define ITERATIONS 1e6
+#define ITERATIONS 1e4
 
 #define ABS(x) (x < 0 ? -x : x)
 
 static unsigned almost_identity(struct _matrix * m, double precision)
 {
 	double x = 0;
-	unsigned nrows = m->dimensions[ROW];
+	unsigned nrows = MATRIX_GET_ROW(m);
 	for (unsigned i = 0; nrows > i; i++)
 		for (unsigned j = 0; nrows > j; j++) {
 			x = matrix_get_entry(m, ME(i, j));
@@ -46,50 +50,6 @@ static unsigned almost_identity(struct _matrix * m, double precision)
 	return 1U;
 }
 
-unsigned armijo(struct _matrix * xk,
-		struct _quadratic_form * qf,
-		double fx, struct _matrix * grad_fx,
-  		struct _matrix * d_alpha, double c2)
-{
-	struct _matrix * lhs_arg = matrix_alloc(Nx1);
-	matrix_add(lhs_arg, xk, d_alpha);
-
-	double lhs = quadratic_form_eval(qf, lhs_arg);
-	matrix_free(lhs_arg);
-
-	double rhs = fx + c2 * matrix_scalar_prod(grad_fx, d_alpha);
-
-	return lhs <= rhs;
-}
-
-double
-line_search(struct _quadratic_form * qf, struct _matrix * x,
-	    struct _matrix * d, double alpha0, double c1, double c2)
-{
-	double fx = quadratic_form_eval(qf, x);
-	struct _matrix * grad_fx = quadratic_form_eval_grad(qf, x);
-
-	struct _matrix * xk = matrix_alloc(Nx1);
-	struct _matrix * d_alpha = matrix_alloc(Nx1);
-	double alpha = alpha0;
-
-	matrix_copy(d_alpha, d);
-	matrix_scalar_mult(d_alpha, alpha);
-	matrix_add(xk, x, d_alpha);
-	while (!armijo(xk, qf, fx, grad_fx, d_alpha, c2)) {
-		alpha *= c1;
-		matrix_copy(d_alpha, d);
-		matrix_scalar_mult(d_alpha, alpha);
-		matrix_add(xk, x, d_alpha);
-	}
-
-	matrix_free(grad_fx);
-	matrix_free(xk);
-	matrix_free(d_alpha);
-
-	return alpha;
-}
-
 void inversion_test(void)
 {
 	unsigned i = 0;
@@ -98,7 +58,7 @@ void inversion_test(void)
 		struct _matrix * b = matrix_alloc(NxN);
 		struct _matrix * c = matrix_alloc(NxN);
 
-		matirx_random_pos_def(a, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
+		matirx_random_pos_def(a, P_RAND_ENTRY_MIN, P_RAND_ENTRY_MAX);
 		matrix_copy(b, a);
 		matrix_invert(a);
 		matrix_mult(c, b, a);
@@ -143,117 +103,55 @@ void scalar_prod_test(void)
 }
 
 void
-gradient_descent_with_line_search_test(struct _matrix * x0,
-		                       struct _quadratic_form * qf)
+test_optimizer(struct _quadratic_form * qf, unsigned iterations,
+	       struct _matrix * x0, const char * opt_name,
+	       struct _matrix * (* opt)(struct _matrix *,
+		                        unsigned,
+		                        struct _quadratic_form *))
 {
 	time_t start = time(0);
-	unsigned end_by_grad_min = 0;
-
-	struct _matrix * x = matrix_alloc(Nx1);
-	matrix_copy(x, x0);
-
-	double alpha = ALPHA0_GRAD;
-	double c1 = C1;
-	double c2 = C2;
-
-	struct _matrix * grad_qf = 0;
-	struct _matrix * d = matrix_alloc(Nx1);
-	for (unsigned i = 0; ITERATIONS > i; i++) {
-		grad_qf = quadratic_form_eval_grad(qf, x);
-		if (!grad_qf) {
-			fprintf(stderr, "got invalid grad_qf in test\n");
-			exit(EXIT_FAILURE);
-		}
-		if (MIN_GRAD > matrix_norm(grad_qf)) {
-			end_by_grad_min = 1U;
-			matrix_free(grad_qf);
-			break;
-		}
-		matrix_copy(d, grad_qf);
-		matrix_free(grad_qf);
-
-		matrix_scalar_mult(d, -1);
-
-		alpha = line_search(qf, x, d, ALPHA0_GRAD, c1, c2);
-
-		matrix_scalar_mult(d, alpha);
-		matrix_add(x, x, d);
-
-	}
-	matrix_free(d);
-
+	struct _matrix * x = opt(x0, iterations, qf);
 	time_t end = time(0);
 
-	printf("gradient_descent_with_line_search_test gave:\n");
-	printf("f(x_min) = %e (took around %li s) %s\n",
-	       quadratic_form_eval(qf, x), end - start,
-	       end_by_grad_min ? "(end by grad min)" : "");
+	printf("%s gave:\n", opt_name);
+	printf("f(x_min) = %e (took around %li s)\n",
+	       quadratic_form_eval(qf, x), end - start);
 	fflush(stdout);
 
 	matrix_free(x);
 }
 
-void
-newton_method_with_line_search_test(struct _matrix * x0,
-		                    struct _quadratic_form * qf)
+void test_reference(struct _quadratic_form * qf)
 {
-	time_t start = time(0);
-	unsigned end_by_grad_min = 0;
+	FILE * fp = fopen(TMP_FILENAME, "w");
 
-	struct _matrix * x = matrix_alloc(Nx1);
-	matrix_copy(x, x0);
+	double n = MATRIX_GET_ROW(qf->p);
+	fwrite((const void *)&n,
+	       sizeof(n), 1, fp);
 
-	double alpha = ALPHA0_NEWTON;
-	double c1 = C1;
-	double c2 = C2;
-
-	struct _matrix * grad_qf = 0;
-	struct _matrix * d = matrix_alloc(Nx1);
-	struct _matrix * hessian_inv = matrix_alloc(NxN);
-	matrix_copy(hessian_inv, qf->p);
-	matrix_invert(hessian_inv);
-
-	for (unsigned i = 0; ITERATIONS > i; i++) {
-		grad_qf = quadratic_form_eval_grad(qf, x);
-		if (!grad_qf) {
-			fprintf(stderr, "got invalid grad_qf in test\n");
-			exit(EXIT_FAILURE);
-		}
-		if (MIN_GRAD > matrix_norm(grad_qf)) {
-			end_by_grad_min = 1U;
-			matrix_free(grad_qf);
-			break;
-		}
-		matrix_mult(d, hessian_inv, grad_qf);
-		matrix_free(grad_qf);
-
-		matrix_scalar_mult(d, -1);
-
-		alpha = line_search(qf, x, d, ALPHA0_NEWTON, c1, c2);
-
-		matrix_scalar_mult(d, alpha);
-		matrix_add(x, x, d);
-
+	struct _matrix * ms[2] = {qf->p, qf->q,};
+	for (unsigned i = 0; 2 > i; i++) {
+		struct _matrix * m = ms[i];
+		double * elements = m->elements;
+		unsigned rows = MATRIX_GET_ROW(m);
+		unsigned cols = MATRIX_GET_COL(m);
+		fwrite((const void *)m->elements,
+		       sizeof(*elements), rows * cols, fp);
 	}
-	matrix_free(hessian_inv);
-	matrix_free(d);
 
-	time_t end = time(0);
+	fclose(fp);
 
-	printf("newton_method_with_line_search_test gave:\n");
-	printf("f(x_min) = %e (took around %li s) %s\n",
-	       quadratic_form_eval(qf, x), end - start,
-	       end_by_grad_min ? "(end by grad min)" : "");
-	fflush(stdout);
-
-	matrix_free(x);
+	system(SHELL_REF_TEST_CMD);
+	unlink(TMP_FILENAME);
 }
 
 int main(void)
 {
 	/* important */
 	kmalloc_init();
+	srand(time(0));
 
+	/* some test for matrix lib */
 	inversion_test();
 	scalar_prod_test();
 
@@ -271,13 +169,20 @@ int main(void)
 	/* to hold initial state */
 	struct _matrix * x0 = matrix_alloc(Nx1);
 
+	/* test optimizers */
 	for (unsigned i = 0; NUM_OPT_TEST_RUNS > i; i++) {
-		matirx_random_pos_def(p, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
-		matrix_random(q, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
-		r = random_number(RAND_ENTRY_MIN, RAND_ENTRY_MAX);
-		matrix_random(x0, RAND_ENTRY_MIN, RAND_ENTRY_MAX);
-		gradient_descent_with_line_search_test(x0, qf);
-		newton_method_with_line_search_test(x0, qf);
+		matirx_random_pos_def(p, P_RAND_ENTRY_MIN, P_RAND_ENTRY_MAX);
+		matrix_random(q, Q_RAND_ENTRY_MIN, Q_RAND_ENTRY_MAX);
+		matrix_random(x0, X_RAND_ENTRY_MIN, X_RAND_ENTRY_MAX);
+
+		test_optimizer(qf, ITERATIONS, x0,
+			       "gradient_descent_with_line_search",
+				gradient_descent_with_line_search);
+		test_optimizer(qf, ITERATIONS, x0,
+			       "newton_method_with_line_search",
+				newton_method_with_line_search);
+		test_reference(qf);
+
 		printf("\v");
 	}
 
