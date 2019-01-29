@@ -6,6 +6,8 @@
 
 #include "matrix_ops.h"
 
+#define MIN 3U
+#define MAX 2U
 #define ADD 1U
 #define SUB 0U
 
@@ -322,9 +324,19 @@ double matrix_scalar_prod(struct _matrix * a, struct _matrix * b)
 	return acc;
 }
 
+static double max(double a, double b)
+{
+	return a > b ? a : b;
+}
+
+static double min(double a, double b)
+{
+	return a > b ? b : a;
+}
+
 static void
 matrix_add_sub(struct _matrix * sum,
-		struct _matrix * a, struct _matrix * b, unsigned add_sub)
+		struct _matrix * a, struct _matrix * b, unsigned flag)
 {
 #ifdef NERVOUS
 	/* might want to check carefully who called if error occurs ! */
@@ -341,8 +353,18 @@ matrix_add_sub(struct _matrix * sum,
 		return;
 	}
 	if (!matrix_sum_dimension_compatible(sum, a, b)) {
-		fprintf(stderr, "incompatible matrix dimensions in "
-				"matrix_%s\n", ADD == add_sub ? "add" : "sub");
+		const char * func = 0;
+		if (ADD == flag)
+			func = "add";
+		if (SUB == flag)
+			func = "sub";
+		if (MAX == flag)
+			func = "max";
+		if (MIN == flag)
+			func = "min";
+
+		fprintf(stderr, "incompatible matrix "
+				"dimensions in matrix_%s\n", func);
 		return;
 	}
 #endif
@@ -355,8 +377,14 @@ matrix_add_sub(struct _matrix * sum,
 		for (unsigned j = 0; ncols > j; j++) {
 			aa = matrix_get_entry(a, ME(i, j));
 			bb = matrix_get_entry(b, ME(i, j));
-			matrix_set_entry(sum, ME(i, j),
-					ADD == add_sub ? aa + bb : aa - bb);
+			if (ADD == flag)
+				matrix_set_entry(sum, ME(i, j), aa + bb);
+			if (SUB == flag)
+				matrix_set_entry(sum, ME(i, j), aa - bb);
+			if (MAX == flag)
+				matrix_set_entry(sum, ME(i, j), max(aa, bb));
+			if (MIN == flag)
+				matrix_set_entry(sum, ME(i, j), min(aa, bb));
 		}
 }
 
@@ -370,6 +398,18 @@ void matrix_sub(struct _matrix * sum,
 		struct _matrix * a, struct _matrix * b)
 {
 	matrix_add_sub(sum, a, b, SUB);
+}
+
+void matrix_max(struct _matrix * sum,
+		struct _matrix * a, struct _matrix * b)
+{
+	matrix_add_sub(sum, a, b, MAX);
+}
+
+void matrix_min(struct _matrix * sum,
+		struct _matrix * a, struct _matrix * b)
+{
+	matrix_add_sub(sum, a, b, MIN);
 }
 
 void matrix_trans(struct _matrix * m)
@@ -429,6 +469,36 @@ matrix_lup_pivot(struct _matrix * m, unsigned k)
 		.pivot = pivot,
 		.pivot_idx = pivot_idx,
 	};
+}
+
+struct _matrix * matrix_cholesky(struct _matrix * m)
+{
+	struct _matrix * c = matrix_alloc(NxN);
+	if (!c)
+		return c;
+	matrix_zero_up(c);
+
+	unsigned nrows = MATRIX_GET_ROW(c);
+	for (unsigned i = 0; nrows > i; i++)
+		for (unsigned j = 0; nrows > j; j++) {
+			double s = 0;
+			for (unsigned k = 0; j > k; k++)
+				s += matrix_get_entry(c, ME(i, k))
+				     * matrix_get_entry(c, ME(j, k));
+			if (i != j) {
+				double tmp = 1.0 / matrix_get_entry(c, ME(j, j))
+					           * (matrix_get_entry(m, ME(i, j)) - s);
+				matrix_set_entry(c, ME(i, j), tmp);
+			} else {
+				double tmp = sqrt(matrix_get_entry(m, ME(i, i)) - s);
+				matrix_set_entry(c, ME(i, j), tmp);
+			}
+		}
+	for (unsigned i = 0; nrows > i; i++)
+		for (unsigned j = i + 1; nrows > j; j++)
+			matrix_set_entry(c, ME(i, j), 0);
+
+	return c;
 }
 
 static void
