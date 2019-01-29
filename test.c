@@ -13,8 +13,8 @@
 #define TEST_PRECISION 1e-6
 #define NUM_INVERSION_TEST_RUNS 8
 
-#define P_RAND_ENTRY_MIN -1e3
-#define P_RAND_ENTRY_MAX 1e3
+#define P_RAND_ENTRY_MIN -1e4
+#define P_RAND_ENTRY_MAX 1e4
 #define Q_RAND_ENTRY_MIN -1e3
 #define Q_RAND_ENTRY_MAX 1e3
 #define X_RAND_ENTRY_MIN -1e3
@@ -22,7 +22,7 @@
 
 #define NUM_OPT_TEST_RUNS 8
 
-#define ITERATIONS 1e3
+#define ITERATIONS 1e4
 
 #define ABS(x) (x < 0 ? -x : x)
 
