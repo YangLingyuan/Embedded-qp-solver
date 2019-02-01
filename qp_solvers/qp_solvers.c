@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "qp.h"
 #include "qp_solvers.h"
@@ -142,15 +143,186 @@ newton_method_with_line_search(struct _matrix * x0,
 	return x;
 }
 
+void admm_update_x(struct _matrix * R_inv,
+		   struct _matrix * R_T_inv, double rho,
+		   struct _matrix * x, struct _matrix * z,
+		   struct _matrix * u, struct _matrix * q)
+{
+	struct _matrix * y1 = matrix_alloc(Nx1);
+	struct _matrix * y2 = matrix_alloc(Nx1);
+
+	matrix_sub(y1, z, u);
+	matrix_scalar_mult(y1, rho);
+	matrix_sub(y1, y1, q);
+	matrix_mult(y2, R_T_inv, y1);
+	matrix_mult(x, R_inv, y2);
+
+	matrix_free(y1);
+	matrix_free(y2);
+}
+
+void admm_update_x_hat(struct _matrix * x, double alpha,
+		       struct _matrix * z, struct _matrix * x_hat)
+{
+	struct _matrix * tmp = matrix_alloc(Nx1);
+
+	matrix_copy(x_hat, x);
+	matrix_scalar_mult(x_hat, alpha);
+	matrix_copy(tmp, z);
+	matrix_scalar_mult(tmp, 1 - alpha);
+	matrix_add(x_hat, x_hat, tmp);
+
+	matrix_free(tmp);
+}
+
+void admm_update_z(struct _matrix * ub,
+		   struct _matrix * lb,
+                   struct _matrix * u,
+                   struct _matrix * z,
+		   struct _matrix * x_hat)
+{
+	struct _matrix * tmp = matrix_alloc(Nx1);
+
+	matrix_add(tmp, x_hat, u);
+	matrix_max(tmp, tmp, lb);
+	matrix_min(z, tmp, ub);
+
+	matrix_free(tmp);
+}
+
+void admm_update_u(struct _matrix * u,
+		   struct _matrix * z,
+		   struct _matrix * x_hat)
+{
+	struct _matrix * tmp = matrix_alloc(Nx1);
+
+	matrix_sub(tmp, x_hat, z);
+	matrix_add(u, u, tmp);
+
+	matrix_free(tmp);
+}
+
+double admm_r_norm(struct _matrix * x, struct _matrix * z)
+{
+	struct _matrix * tmp = matrix_alloc(Nx1);
+
+	matrix_sub(tmp, x, z);
+	double ret = matrix_norm(tmp);
+
+	matrix_free(tmp);
+
+	return ret;
+}
+
+double admm_s_norm(double rho,
+		   struct _matrix * z, struct _matrix * z_old)
+{
+	struct _matrix * tmp = matrix_alloc(Nx1);
+
+	matrix_sub(tmp, z, z_old);
+	matrix_scalar_mult(tmp, -rho);
+	double ret = matrix_norm(tmp);
+
+	matrix_free(tmp);
+
+	return ret;
+}
+
+double admm_eps_pri(unsigned nrows,
+		    double abstol, double restol,
+		    struct _matrix * x, struct _matrix * z)
+{
+	double norm_x = matrix_norm(x);
+	double norm_z = matrix_norm(z);
+	double norm_max = norm_x > norm_z ? norm_x : norm_z;
+
+	return sqrt(nrows) * abstol + restol * norm_max;
+}
+
+double admm_eps_dual(unsigned nrows,
+		     double abstol, double restol,
+		     double rho, struct _matrix * u)
+{
+	double norm_u = matrix_norm(u);
+
+	return sqrt(nrows) * abstol + restol * rho * norm_u;
+}
+
 struct _matrix *
 admm(struct _matrix * x0, unsigned iterations,
 		          struct _quadratic_form * qf)
 {
 	struct _matrix * x = matrix_alloc(Nx1);
-	matrix_copy(x, x0);
+	struct _matrix * x_hat = matrix_alloc(Nx1);
+	struct _matrix * z = matrix_alloc(Nx1);
+	struct _matrix * u = matrix_alloc(Nx1);
+	matrix_zero_up(z);
+	matrix_zero_up(u);
+	struct _matrix * R = 0;
+	struct _matrix * R_inv = matrix_alloc(NxN);
+	struct _matrix * R_T_inv = matrix_alloc(NxN);
+	struct _matrix * P = qf->p; 
+	unsigned nrows = MATRIX_GET_ROW(P);
+	struct _matrix * q = qf->q; 
+	double r_nrom = 0;
+	double s_nrom = 0;
+	double eps_pri = 0;
+	double eps_dual = 0;
+	double abstol = 1e-4;
+	double restol = 1e-2;
+	struct _matrix * ub = matrix_alloc(Nx1);
+	struct _matrix * lb = matrix_alloc(Nx1);
+	for (unsigned i = 0; nrows > i; i++) {
+		matrix_set_entry(ub, ME(i, 0), 1e4);
+		matrix_set_entry(lb, ME(i, 0), -1e4);
+	}
+	double rho = 1;
+	double alpha = 1;
 
 	for (unsigned i = 0; iterations > i; i++) {
+		if (!i) {
+			struct _matrix * tmp = matrix_alloc(NxN);
+			matrix_copy(tmp, P);
+			for (unsigned i = 0; nrows > i; i++) {
+				double s = matrix_get_entry(tmp, ME(i, i));
+				matrix_set_entry(tmp, ME(i, i), s + rho);
+			}
+			R = matrix_cholesky(tmp);
+			matrix_free(tmp);
+
+			matrix_copy(R_T_inv, R);
+			matrix_invert(R_T_inv);
+			matrix_trans(R);
+			matrix_copy(R_inv, R);
+			matrix_invert(R_inv);
+
+			matrix_free(R);
+		}
+		struct _matrix * z_old = matrix_alloc(Nx1);
+		matrix_copy(z_old, z);
+
+		admm_update_x(R_inv, R_T_inv, rho, x, z, u, q);
+		admm_update_x_hat(x, alpha, z, x_hat);
+		admm_update_z(ub, lb, u, z, x_hat);
+		admm_update_u(u, z, x_hat);
+
+		r_nrom = admm_r_norm(x, z);
+		s_nrom = admm_s_norm(rho, z, z_old);
+		eps_pri = admm_eps_pri(nrows, abstol, restol, x, z);
+		eps_dual = admm_eps_dual(nrows, abstol, restol, rho, u);
+
+		matrix_free(z_old);
+
+		if (r_nrom < eps_pri && s_nrom < eps_dual)
+			break;
 	}
+	matrix_free(R_T_inv);
+	matrix_free(R_inv);
+	matrix_free(u);
+	matrix_free(z);
+	matrix_free(lb);
+	matrix_free(ub);
+	matrix_free(x_hat);
 
 	return x;
 }

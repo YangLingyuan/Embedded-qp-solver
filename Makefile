@@ -1,17 +1,10 @@
 OUT = test
-
 OBJ_DIR = obj
-
 DEP_DIR = dep
-
 INTERREST := $(shell find . | grep \\.[hcS]$)
-
 SRC = $(filter %.c %.S, $(INTERREST))
-
 OBJ = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
-
-DEP = $(addprefix $(DEP_DIR)/, $(addsuffix .d, $(basename $(notdir $(SRC)))))
-
+DEP = $(addprefix $(DEP_DIR)/, $(addsuffix .d, $(basename $(notdir $(INTERREST)))))
 INC = $(addprefix -I , $(sort $(dir $(filter %.h, $(INTERREST)))))
 VPATH = $(sort $(dir $(SRC)))
 
