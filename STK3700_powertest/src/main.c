@@ -12,8 +12,11 @@
  * any purpose, you must agree to the terms of that agreement.
  *
  ******************************************************************************/
-
+#include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <math.h>
+#include <unistd.h>
 #include "em_device.h"
 #include "em_chip.h"
 #include "em_cmu.h"
@@ -21,7 +24,27 @@
 #include "em_wdog.h"
 #include "rtcdriver.h"
 #include "bsp_trace.h"
+#include "matrix_ops.h"
+#include "qp.h"
+#include "qp_solvers.h"
 
+#define TMP_FILENAME "tmp_test_file"
+#define SHELL_REF_TEST_CMD "python qp_ref.py " TMP_FILENAME
+#define TEST_PRECISION 1e-6
+#define NUM_INVERSION_TEST_RUNS 8
+
+#define P_RAND_ENTRY_MIN -1e4
+#define P_RAND_ENTRY_MAX 1e4
+#define Q_RAND_ENTRY_MIN -1e3
+#define Q_RAND_ENTRY_MAX 1e3
+#define X_RAND_ENTRY_MIN -1e3
+#define X_RAND_ENTRY_MAX 1e3
+
+#define NUM_OPT_TEST_RUNS 8
+
+#define ITERATIONS 1e4
+
+#define ABS(x) (x < 0 ? -x : x)
 /** Counts 1ms timeTicks */
 volatile uint32_t msTicks;
 
@@ -63,8 +86,8 @@ void Delay(uint32_t dlyTicks)
  ******************************************************************************/
 int main(void)
 {
-  WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
-  int i;
+  //WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+  //int i;
 
   /* Chip revision alignment and errata fixes */
   CHIP_Init();
@@ -77,19 +100,15 @@ int main(void)
   RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
   /* Watchdog setup - Use defaults, excepts for these :*/
-  wInit.em2Run = true;
-  wInit.em3Run = true;
-  wInit.perSel = wdogPeriod_4k; /* 4k 1kHz periods should give ~4 seconds in EM3 */
+  //wInit.em2Run = true;
+  //wInit.em3Run = true;
+  //wInit.perSel = wdogPeriod_4k; /* 4k 1kHz periods should give ~4 seconds in EM3 */
 
   /* Do the demo forever. */
 
-  /* EM0 - 1 sec HFXO  */
-  CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
-  /* Setup SysTick Timer for 1 msec interrupts  */
-  if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000)) {
-    while (1) ;
-  }
-  Delay(1000);
+while(1)
+{
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 10000, NULL, NULL);
 
   /* EM0 - 1 sec HFRCO */
   CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
@@ -97,63 +116,27 @@ int main(void)
   if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000)) {
     while (1) ;
   }
-  Delay(1000);
+  Delay(5000);
 
   /* Turn off systick */
   SysTick_Disable();
 
   /* EM1 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM1();
+  //RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
+  //EMU_EnterEM1();
 
   /* EM2 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM2(true);
 
-  /* EM1 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM1();
+  //EMU_EnterEM2(true);
+  EMU_EnterEM3(true);
 
-  /* EM2 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM2(true);
-
-  /* Up and down from EM2 each 10 msec */
-  for (i = 0; i < 50; i++) {
-    RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 10, NULL, NULL);
-    EMU_EnterEM2(true);
-    RTCDRV_Delay(10);
-  }
-
-  /* EM2 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM2(true);
-
-  /* Up and down from EM2 each 2 msec */
-  for (i = 0; i < 500; i++) {
-    RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 2, NULL, NULL);
-    EMU_EnterEM2(true);
-  }
-
-  /* EM2 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM2(true);
-
-  /* Up and down from EM2 each msec */
-  for (i = 0; i < 1000; i++) {
-    RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1, NULL, NULL);
-    EMU_EnterEM2(true);
-  }
-
-  /* EM2 - 1 sec */
-  RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, 1000, NULL, NULL);
-  EMU_EnterEM2(true);
+}
 
   /* Start watchdog */
-  WDOG_Init(&wInit);
+  //WDOG_Init(&wInit);
 
   /* Enter EM3 - Watchdog will reset chip (and confuse debuggers) */
-  EMU_EnterEM3(true);
+  //EMU_EnterEM3(true);
 
   /* We will never reach this point */
   return 0;
