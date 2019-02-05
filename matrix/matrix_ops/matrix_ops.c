@@ -471,36 +471,6 @@ matrix_lup_pivot(struct _matrix * m, unsigned k)
 	};
 }
 
-struct _matrix * matrix_cholesky(struct _matrix * m)
-{
-	struct _matrix * c = matrix_alloc(NxN);
-	if (!c)
-		return c;
-	matrix_zero_up(c);
-
-	unsigned nrows = MATRIX_GET_ROW(c);
-	for (unsigned i = 0; nrows > i; i++)
-		for (unsigned j = 0; nrows > j; j++) {
-			double s = 0;
-			for (unsigned k = 0; j > k; k++)
-				s += matrix_get_entry(c, ME(i, k))
-				     * matrix_get_entry(c, ME(j, k));
-			if (i != j) {
-				double tmp = 1.0 / matrix_get_entry(c, ME(j, j))
-					           * (matrix_get_entry(m, ME(i, j)) - s);
-				matrix_set_entry(c, ME(i, j), tmp);
-			} else {
-				double tmp = sqrt(matrix_get_entry(m, ME(i, i)) - s);
-				matrix_set_entry(c, ME(i, j), tmp);
-			}
-		}
-	for (unsigned i = 0; nrows > i; i++)
-		for (unsigned j = i + 1; nrows > j; j++)
-			matrix_set_entry(c, ME(i, j), 0);
-
-	return c;
-}
-
 static void
 matrix_row_permute(struct _matrix * m, unsigned row1, unsigned row2)
 {
