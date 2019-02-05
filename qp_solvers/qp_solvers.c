@@ -18,7 +18,7 @@
 #define RELTOL = 1e-2
 #define ALPHA_ADMM 1.4
 
-unsigned armijo(struct _matrix * xk,
+static unsigned armijo(struct _matrix * xk,
 		struct _quadratic_form * qf,
 		double fx, struct _matrix * grad_fx,
   		struct _matrix * d_alpha, double c2)
@@ -34,7 +34,7 @@ unsigned armijo(struct _matrix * xk,
 	return lhs <= rhs;
 }
 
-double
+static double
 line_search(struct _quadratic_form * qf, struct _matrix * x,
 	    struct _matrix * d, double alpha0, double c1, double c2)
 {
@@ -143,24 +143,22 @@ newton_method_with_line_search(struct _matrix * x0,
 	return x;
 }
 
-void admm_update_x(struct _matrix * R_inv,
-		   struct _matrix * R_T_inv, double rho,
+static
+void admm_update_x(struct _matrix * R, double rho,
 		   struct _matrix * x, struct _matrix * z,
 		   struct _matrix * u, struct _matrix * q)
 {
 	struct _matrix * y1 = matrix_alloc(Nx1);
-	struct _matrix * y2 = matrix_alloc(Nx1);
 
 	matrix_sub(y1, z, u);
 	matrix_scalar_mult(y1, rho);
 	matrix_sub(y1, y1, q);
-	matrix_mult(y2, R_T_inv, y1);
-	matrix_mult(x, R_inv, y2);
+	matrix_mult(x, R, y1);
 
 	matrix_free(y1);
-	matrix_free(y2);
 }
 
+static
 void admm_update_x_hat(struct _matrix * x, double alpha,
 		       struct _matrix * z, struct _matrix * x_hat)
 {
@@ -175,6 +173,7 @@ void admm_update_x_hat(struct _matrix * x, double alpha,
 	matrix_free(tmp);
 }
 
+static
 void admm_update_z(struct _matrix * ub,
 		   struct _matrix * lb,
                    struct _matrix * u,
@@ -190,6 +189,7 @@ void admm_update_z(struct _matrix * ub,
 	matrix_free(tmp);
 }
 
+static
 void admm_update_u(struct _matrix * u,
 		   struct _matrix * z,
 		   struct _matrix * x_hat)
@@ -202,6 +202,7 @@ void admm_update_u(struct _matrix * u,
 	matrix_free(tmp);
 }
 
+static
 double admm_r_norm(struct _matrix * x, struct _matrix * z)
 {
 	struct _matrix * tmp = matrix_alloc(Nx1);
@@ -214,6 +215,7 @@ double admm_r_norm(struct _matrix * x, struct _matrix * z)
 	return ret;
 }
 
+static
 double admm_s_norm(double rho,
 		   struct _matrix * z, struct _matrix * z_old)
 {
@@ -228,6 +230,7 @@ double admm_s_norm(double rho,
 	return ret;
 }
 
+static
 double admm_eps_pri(unsigned nrows,
 		    double abstol, double restol,
 		    struct _matrix * x, struct _matrix * z)
@@ -239,6 +242,7 @@ double admm_eps_pri(unsigned nrows,
 	return sqrt(nrows) * abstol + restol * norm_max;
 }
 
+static
 double admm_eps_dual(unsigned nrows,
 		     double abstol, double restol,
 		     double rho, struct _matrix * u)
@@ -258,9 +262,7 @@ admm(struct _matrix * x0, unsigned iterations,
 	struct _matrix * u = matrix_alloc(Nx1);
 	matrix_zero_up(z);
 	matrix_zero_up(u);
-	struct _matrix * R = 0;
-	struct _matrix * R_inv = matrix_alloc(NxN);
-	struct _matrix * R_T_inv = matrix_alloc(NxN);
+	struct _matrix * R = matrix_alloc(NxN);
 	struct _matrix * P = qf->p; 
 	unsigned nrows = MATRIX_GET_ROW(P);
 	struct _matrix * q = qf->q; 
@@ -281,27 +283,17 @@ admm(struct _matrix * x0, unsigned iterations,
 
 	for (unsigned i = 0; iterations > i; i++) {
 		if (!i) {
-			struct _matrix * tmp = matrix_alloc(NxN);
-			matrix_copy(tmp, P);
+			matrix_copy(R, P);
 			for (unsigned i = 0; nrows > i; i++) {
-				double s = matrix_get_entry(tmp, ME(i, i));
-				matrix_set_entry(tmp, ME(i, i), s + rho);
+				double s = matrix_get_entry(R, ME(i, i));
+				matrix_set_entry(R, ME(i, i), s + rho);
 			}
-			R = matrix_cholesky(tmp);
-			matrix_free(tmp);
-
-			matrix_copy(R_T_inv, R);
-			matrix_invert(R_T_inv);
-			matrix_trans(R);
-			matrix_copy(R_inv, R);
-			matrix_invert(R_inv);
-
-			matrix_free(R);
+			matrix_invert(R);
 		}
 		struct _matrix * z_old = matrix_alloc(Nx1);
 		matrix_copy(z_old, z);
 
-		admm_update_x(R_inv, R_T_inv, rho, x, z, u, q);
+		admm_update_x(R, rho, x, z, u, q);
 		admm_update_x_hat(x, alpha, z, x_hat);
 		admm_update_z(ub, lb, u, z, x_hat);
 		admm_update_u(u, z, x_hat);
@@ -316,8 +308,7 @@ admm(struct _matrix * x0, unsigned iterations,
 		if (r_nrom < eps_pri && s_nrom < eps_dual)
 			break;
 	}
-	matrix_free(R_T_inv);
-	matrix_free(R_inv);
+	matrix_free(R);
 	matrix_free(u);
 	matrix_free(z);
 	matrix_free(lb);

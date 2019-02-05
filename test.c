@@ -22,7 +22,9 @@
 
 #define NUM_OPT_TEST_RUNS 8
 
-#define ITERATIONS 1e4
+#define GRAD_ITERATIONS 1e4
+#define HESS_ITERATIONS 1e1
+#define ADMM_ITERATIONS 1e4
 
 #define ABS(x) (x < 0 ? -x : x)
 
@@ -211,13 +213,13 @@ int main(void)
 		matrix_random(q, Q_RAND_ENTRY_MIN, Q_RAND_ENTRY_MAX);
 		matrix_random(x0, X_RAND_ENTRY_MIN, X_RAND_ENTRY_MAX);
 
-		test_optimizer(qf, ITERATIONS, x0,
+		test_optimizer(qf, GRAD_ITERATIONS, x0,
 			       "gradient_descent_with_line_search",
 				gradient_descent_with_line_search);
-		test_optimizer(qf, ITERATIONS, x0,
+		test_optimizer(qf, HESS_ITERATIONS, x0,
 			       "newton_method_with_line_search",
 				newton_method_with_line_search);
-		test_optimizer(qf, ITERATIONS, x0, "admm", admm);
+		test_optimizer(qf, ADMM_ITERATIONS, x0, "admm", admm);
 		test_reference(qf);
 
 		printf("\v");
