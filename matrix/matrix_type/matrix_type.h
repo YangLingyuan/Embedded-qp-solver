@@ -2,7 +2,7 @@
 #define MATRIX_TYPE_H
 
 /* configure matrix types here */
-#define N 48U
+#define N 32U
 #define NxN_MAX 12
 #define Nx1_MAX 12
 
