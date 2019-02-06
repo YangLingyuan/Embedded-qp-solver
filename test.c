@@ -13,18 +13,23 @@
 #define TEST_PRECISION 1e-6
 #define NUM_INVERSION_TEST_RUNS 8
 
-#define P_RAND_ENTRY_MIN -1e4
-#define P_RAND_ENTRY_MAX 1e4
+#define P_RAND_ENTRY_MIN -1e3
+#define P_RAND_ENTRY_MAX 1e3
 #define Q_RAND_ENTRY_MIN -1e3
 #define Q_RAND_ENTRY_MAX 1e3
 #define X_RAND_ENTRY_MIN -1e3
 #define X_RAND_ENTRY_MAX 1e3
 
-#define NUM_OPT_TEST_RUNS 8
+#define NUM_OPT_TEST_RUNS 32
 
 #define GRAD_ITERATIONS 1e4
 #define HESS_ITERATIONS 1e1
 #define ADMM_ITERATIONS 1e4
+
+#define GRAD_TEST
+#define HESS_TEST
+#define ADMM_TEST
+#define REF_TEST
 
 #define ABS(x) (x < 0 ? -x : x)
 
@@ -157,42 +162,6 @@ int main(void)
 	inversion_test();
 	scalar_prod_test();
 
-	/*
-	should give: 
-
-	 [[ 0.98380043,  0.        ,  0.        ,  0.        ],
-          [-1.1824829 ,  0.69774422,  0.        ,  0.        ],
-          [ 0.81301833, -0.12749113,  2.29868427,  0.        ],
-          [-0.74749141,  0.66881122,  0.48986368,  0.18305562]]
-	*/
-	/*
-	struct _matrix * a = matrix_alloc(NxN);
-	matrix_set_entry(a, ME(0, 0), 0.96786328);
-	matrix_set_entry(a, ME(0, 1), -1.16332718);
-	matrix_set_entry(a, ME(0, 2),  0.79984778);
-	matrix_set_entry(a, ME(0, 3), -0.73538237);
-
-	matrix_set_entry(a, ME(1, 0), -1.16332718);
-	matrix_set_entry(a, ME(1, 1),  1.8851128 );
-	matrix_set_entry(a, ME(1, 2), -1.05033646);
-	matrix_set_entry(a, ME(1, 3),  1.35055497);
-
-	matrix_set_entry(a, ME(2, 0), 0.79984778);
-	matrix_set_entry(a, ME(2, 1), -1.05033646);
-	matrix_set_entry(a, ME(2, 2),  5.96120218);
-	matrix_set_entry(a, ME(2, 3),  0.43305023);
-
-	matrix_set_entry(a, ME(3, 0), -0.73538237);
-	matrix_set_entry(a, ME(3, 1),  1.35055497);
-	matrix_set_entry(a, ME(3, 2),  0.43305023);
-	matrix_set_entry(a, ME(3, 3),  1.27952765);
-	struct _matrix * try = matrix_cholesky(a);
-	matrix_print(try);
-	matrix_free(try);
-	matrix_free(a);
-	return EXIT_SUCCESS;
-	*/
-
 	/* prepare quadratic cost function */
 	struct _matrix * p = matrix_alloc(NxN);
 	struct _matrix * q = matrix_alloc(Nx1);
@@ -213,14 +182,22 @@ int main(void)
 		matrix_random(q, Q_RAND_ENTRY_MIN, Q_RAND_ENTRY_MAX);
 		matrix_random(x0, X_RAND_ENTRY_MIN, X_RAND_ENTRY_MAX);
 
+#ifdef GRAD_TEST
 		test_optimizer(qf, GRAD_ITERATIONS, x0,
 			       "gradient_descent_with_line_search",
 				gradient_descent_with_line_search);
+#endif
+#ifdef HESS_TEST
 		test_optimizer(qf, HESS_ITERATIONS, x0,
 			       "newton_method_with_line_search",
 				newton_method_with_line_search);
+#endif
+#ifdef ADMM_TEST
 		test_optimizer(qf, ADMM_ITERATIONS, x0, "admm", admm);
+#endif
+#ifdef REF_TEST
 		test_reference(qf);
+#endif
 
 		printf("\v");
 	}

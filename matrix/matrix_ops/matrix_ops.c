@@ -17,8 +17,6 @@
 #define V 0
 #define W 1
 
-#define NERVOUS
-
 struct _pivot {
 	double pivot;
 	unsigned pivot_idx;

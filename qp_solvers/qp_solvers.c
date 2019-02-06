@@ -14,9 +14,9 @@
 #define MIN_GRAD_GRAD 1e-1
 #define MIN_GRAD_NEWTON 1e-1
 
-#define ABSTOL = 1e-4
-#define RELTOL = 1e-2
-#define ALPHA_ADMM 1.4
+#define ABSTOL 1e-4
+#define RELTOL 1e-2
+#define ALPHA_ADMM 1.0
 
 static unsigned armijo(struct _matrix * xk,
 		struct _quadratic_form * qf,
@@ -270,13 +270,13 @@ admm(struct _matrix * x0, unsigned iterations,
 	double s_nrom = 0;
 	double eps_pri = 0;
 	double eps_dual = 0;
-	double abstol = 1e-4;
-	double restol = 1e-2;
+	double abstol = ABSTOL;
+	double restol = RELTOL;
 	struct _matrix * ub = matrix_alloc(Nx1);
 	struct _matrix * lb = matrix_alloc(Nx1);
 	for (unsigned i = 0; nrows > i; i++) {
-		matrix_set_entry(ub, ME(i, 0), 1e4);
-		matrix_set_entry(lb, ME(i, 0), -1e4);
+		matrix_set_entry(ub, ME(i, 0), 1e12);
+		matrix_set_entry(lb, ME(i, 0), -1e12);
 	}
 	double rho = 1;
 	double alpha = 1;
