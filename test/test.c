@@ -46,7 +46,7 @@ void inversion_test(void)
 		matrix_copy(b, a);
 		matrix_invert(a);
 		matrix_mult(c, b, a);
-		if (!almost_identity(c, TEST_PRECISION))
+		if (!almost_identity(c, INVERSION_TEST_PRECISION))
 			fprintf(stderr, "error\n");
 		matrix_free(a);
 		matrix_free(b);

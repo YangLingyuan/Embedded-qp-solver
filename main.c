@@ -11,8 +11,12 @@ int main(void)
 	srand(time(0));
 
 	/* some test for matrix lib */
+#ifdef INV_TEST
 	inversion_test();
+#endif
+#ifdef PROD_TEST
 	scalar_prod_test();
+#endif
 
 	/* prepare quadratic cost function */
 	struct _matrix * p = matrix_alloc(NxN);

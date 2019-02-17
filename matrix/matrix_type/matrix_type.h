@@ -1,10 +1,7 @@
 #ifndef MATRIX_TYPE_H
 #define MATRIX_TYPE_H
 
-/* configure matrix types here */
-#define N 48U
-#define NxN_MAX 5
-#define Nx1_MAX 10
+#include "config.h"
 
 /* since struct _matrix_entry is convenient from an implementation point */
 /* of view but cumbersome when using the api, ME stands for matrix entry */
