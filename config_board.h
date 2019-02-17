@@ -1,5 +1,6 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef NO_BOARD
+#ifndef CONFIG_BOARD_H
+#define CONFIG_BOARD_H
 
 /* dimension of matrices */
 #define N_DIM 32U
@@ -45,4 +46,5 @@
 #define ADMM_TEST
 #define REF_TEST
 
+#endif
 #endif
