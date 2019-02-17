@@ -1,4 +1,4 @@
-This is a guide to test the code on board
+This is a guide to import the code on board
 
 1, Import the example project STK3700_emode
 2, Replace the main file with main_board.c 
