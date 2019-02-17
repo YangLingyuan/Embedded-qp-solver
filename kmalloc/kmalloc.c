@@ -15,12 +15,12 @@ struct _km_header {
 struct _km_NxN {
 	struct _km_header h;
 	struct _matrix val;
-	double elements[N * N];
+	double elements[N_DIM * N_DIM];
 };
 struct _km_Nx1 {
 	struct _km_header h;
 	struct _matrix val;
-	double elements[N * 1];
+	double elements[N_DIM * 1];
 };
 struct _km_QUADRATIC_FORM {
 	struct _km_header h;

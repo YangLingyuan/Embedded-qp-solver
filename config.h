@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 /* dimension of matrices */
-#define N 48U
+#define N_DIM 48U
 /* number of NxN matrices at available at one time */
 #define NxN_MAX 5
 /* number of Nx1 matrices at available at one time */

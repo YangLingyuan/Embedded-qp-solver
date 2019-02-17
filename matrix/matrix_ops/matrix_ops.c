@@ -14,8 +14,8 @@
 #define ABS(x) (0 > (x) ? -(x) : (x))
 
 #define MATRIX_INVERT_SCRATCHPAD_NUM 2
-#define V 0
-#define W 1
+#define V_IDX 0
+#define W_IDX 1
 
 struct _pivot {
 	double pivot;
@@ -37,10 +37,10 @@ struct _matrix * matrix_alloc(enum kmalloc_type type)
 		fprintf(stderr, "no matrix to allocate in matrix_alloc\n");
 		return 0;
 	} else if (NxN == type) {
-		MATRIX_SET_ROW(new, N);
-		MATRIX_SET_COL(new, N);
+		MATRIX_SET_ROW(new, N_DIM);
+		MATRIX_SET_COL(new, N_DIM);
 	} else if (Nx1 == type) {
-		MATRIX_SET_ROW(new, N);
+		MATRIX_SET_ROW(new, N_DIM);
 		MATRIX_SET_COL(new, 1);
 	}
 	return new;
@@ -57,9 +57,9 @@ void matrix_free(struct _matrix * m)
 	/* supporting NxN and Nx1 right now */
 	unsigned nrows = MATRIX_GET_ROW(m);
 	unsigned ncols = MATRIX_GET_COL(m);
-	if (N == nrows && N == ncols)
+	if (N_DIM == nrows && N_DIM == ncols)
 		kfree(m, NxN);
-	else if ((1 == nrows && N == ncols) || (N == nrows && 1 == ncols))
+	else if ((1 == nrows && N_DIM == ncols) || (N_DIM == nrows && 1 == ncols))
 		kfree(m, Nx1);
 	else
 		fprintf(stderr, "no such matrix type in matrix_free\n");
@@ -550,13 +550,13 @@ static void matrix_zero_row(struct _matrix * m, unsigned row)
 
 void matrix_invert(struct _matrix * m)
 {
-	/* only supporting NxN right now (not MxM where M != N) */
+	/* only supporting NxN right now (not MxM where M != N_DIM) */
 #ifdef NERVOUS
 	if (!m || !m->elements) {
 		fprintf(stderr, "invalid matrix in matrix_invert");
 		return;
 	}
-	if ((N != MATRIX_GET_ROW(m)) || (N != MATRIX_GET_COL(m))) {
+	if ((N_DIM != MATRIX_GET_ROW(m)) || (N_DIM != MATRIX_GET_COL(m))) {
 		fprintf(stderr, "invalid matrix "
 				"in matrix_invert "
 				"expecting NxN matrix\n");
@@ -572,11 +572,11 @@ void matrix_invert(struct _matrix * m)
 
 	/* get temporary scratchpads */
 	unsigned nrows = MATRIX_GET_ROW(m);
-	double scratchpad[MATRIX_INVERT_SCRATCHPAD_NUM][N];
-	unsigned permutation[N];
-	for (unsigned k = 0; N > k; k++) {
-		scratchpad[V][k] = 0;
-		scratchpad[W][k] = 0;
+	double scratchpad[MATRIX_INVERT_SCRATCHPAD_NUM][N_DIM];
+	unsigned permutation[N_DIM];
+	for (unsigned k = 0; N_DIM > k; k++) {
+		scratchpad[V_IDX][k] = 0;
+		scratchpad[W_IDX][k] = 0;
 		permutation[k] = k;
 	}
 
@@ -600,8 +600,8 @@ void matrix_invert(struct _matrix * m)
 			double t = 0;
 			for (unsigned k = 0; k + 1 <= n; k++)
 				t += matrix_get_entry(m, ME(n, k))
-					                * scratchpad[W][k];
-			scratchpad[W][n] = matrix_get_entry(tmp,
+					                * scratchpad[W_IDX][k];
+			scratchpad[W_IDX][n] = matrix_get_entry(tmp,
 			                         ME(i, permutation[n])) - t;
 		}
 
@@ -609,13 +609,13 @@ void matrix_invert(struct _matrix * m)
 			double t = 0;
 			for(unsigned k = n + 1; nrows > k; k++)
 				t += matrix_get_entry(m, ME(n, k))
-					                * scratchpad[V][k];
-			scratchpad[V][n] = (scratchpad[W][n] - t)
+					                * scratchpad[V_IDX][k];
+			scratchpad[V_IDX][n] = (scratchpad[W_IDX][n] - t)
 				        / matrix_get_entry(m, ME(n, n));
 		}
 
 		for (unsigned j = 0; nrows > j; j++)
-			matrix_set_entry(tmp, ME(i, j), scratchpad[V][j]);
+			matrix_set_entry(tmp, ME(i, j), scratchpad[V_IDX][j]);
 	}
 
 	for (unsigned i = 0; nrows > i; i++)
@@ -636,7 +636,7 @@ double matrix_norm(struct _matrix * m)
 		fprintf(stderr, "invalid matrix in matrix_norm");
 		return 0;
 	}
-	if (N != MATRIX_GET_ROW(m) && 1 != MATRIX_GET_COL(m)) {
+	if (N_DIM != MATRIX_GET_ROW(m) && 1 != MATRIX_GET_COL(m)) {
 		fprintf(stderr, "invalid matrix in "
 				"matrix_norm, only Nx1 supported");
 		return 0;
@@ -646,7 +646,7 @@ double matrix_norm(struct _matrix * m)
 	/* only Nx1 supported so far */
 	double acc = 0;
 	double tmp = 0;
-	for (unsigned k = 0; N > k; k++) {
+	for (unsigned k = 0; N_DIM > k; k++) {
 		tmp = matrix_get_entry(m, ME(k, 0));
 		tmp *= tmp;
 		acc += tmp;

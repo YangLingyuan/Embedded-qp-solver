@@ -59,7 +59,7 @@ void inversion_test(void)
 void scalar_prod_test(void)
 {
 	struct _matrix * a = matrix_alloc(NxN);
-	for (unsigned i = 0; N > i; i++)
+	for (unsigned i = 0; N_DIM > i; i++)
 		matrix_set_entry(a, ME(i, 0), i);
 
 	struct _matrix * b = matrix_alloc(Nx1);
@@ -69,12 +69,12 @@ void scalar_prod_test(void)
 	matrix_mult(c, a, b);
 
 	struct _matrix * d = matrix_alloc(Nx1);
-	for (unsigned i = 0; N > i; i++)
+	for (unsigned i = 0; N_DIM > i; i++)
 		matrix_set_entry(d, ME(i, 0), i);
 	matrix_trans(c);
 	matrix_trans(d);
 
-	double should_be = (N*(N+1)*(2*N+1)/6) - N*N;
+	double should_be = (N_DIM*(N_DIM+1)*(2*N_DIM+1)/6) - N_DIM*N_DIM;
 	if (should_be != matrix_scalar_prod(d, c))
 		fprintf(stderr, "error in mult test\n");
 
