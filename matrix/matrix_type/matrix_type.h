@@ -2,9 +2,9 @@
 #define MATRIX_TYPE_H
 
 /* configure matrix types here */
-#define N 32U
-#define NxN_MAX 12
-#define Nx1_MAX 12
+#define N 48U
+#define NxN_MAX 5
+#define Nx1_MAX 10
 
 /* since struct _matrix_entry is convenient from an implementation point */
 /* of view but cumbersome when using the api, ME stands for matrix entry */

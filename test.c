@@ -20,7 +20,7 @@
 #define X_RAND_ENTRY_MIN -1e3
 #define X_RAND_ENTRY_MAX 1e3
 
-#define NUM_OPT_TEST_RUNS 32
+#define NUM_OPT_TEST_RUNS 16
 
 #define GRAD_ITERATIONS 1e4
 #define HESS_ITERATIONS 1e1
