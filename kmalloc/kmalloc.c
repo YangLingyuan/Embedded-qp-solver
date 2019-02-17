@@ -47,7 +47,6 @@ static struct _klist * km_pop(struct _klist ** list);
 
 void kmalloc_init(void)
 {
-	/* ugly but meh.. */
 	km_size[NxN] = sizeof(struct _km_NxN);
 	for (unsigned i = 0; NxN_MAX > i; i++) {
 		struct _km_NxN * bucket_element = &NxN_bucket[i];
