@@ -5,7 +5,11 @@
 #include "qp.h"
 #include "qp_solvers.h"
 
+#ifndef NO_BOARD
+#include "config_board.h"
+#else
 #include "config.h"
+#endif
 
 void inversion_test(void);
 void scalar_prod_test(void);

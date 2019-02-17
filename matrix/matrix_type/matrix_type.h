@@ -1,7 +1,11 @@
 #ifndef MATRIX_TYPE_H
 #define MATRIX_TYPE_H
 
+#ifndef NO_BOARD
+#include "config_board.h"
+#else
 #include "config.h"
+#endif
 
 /* since struct _matrix_entry is convenient from an implementation point */
 /* of view but cumbersome when using the api, ME stands for matrix entry */
