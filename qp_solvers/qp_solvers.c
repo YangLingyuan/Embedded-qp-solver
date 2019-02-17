@@ -275,8 +275,8 @@ admm(struct _matrix * x0, unsigned iterations,
 	struct _matrix * ub = matrix_alloc(Nx1);
 	struct _matrix * lb = matrix_alloc(Nx1);
 	for (unsigned i = 0; nrows > i; i++) {
-		matrix_set_entry(ub, ME(i, 0), 1e12);
-		matrix_set_entry(lb, ME(i, 0), -1e12);
+		matrix_set_entry(ub, ME(i, 0), ADMM_BOX_CONSTRAINT_MAX);
+		matrix_set_entry(lb, ME(i, 0), ADMM_BOX_CONSTRAINT_MIN);
 	}
 	double rho = 1;
 	double alpha = 1;

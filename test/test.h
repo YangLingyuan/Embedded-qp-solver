@@ -5,26 +5,7 @@
 #include "qp.h"
 #include "qp_solvers.h"
 
-#define TEST_PRECISION 1e-6
-#define NUM_INVERSION_TEST_RUNS 8
-
-#define P_RAND_ENTRY_MIN -1e3
-#define P_RAND_ENTRY_MAX 1e3
-#define Q_RAND_ENTRY_MIN -1e3
-#define Q_RAND_ENTRY_MAX 1e3
-#define X_RAND_ENTRY_MIN -1e3
-#define X_RAND_ENTRY_MAX 1e3
-
-#define NUM_OPT_TEST_RUNS 16
-
-#define GRAD_ITERATIONS 1e4
-#define HESS_ITERATIONS 1e1
-#define ADMM_ITERATIONS 1e4
-
-#define GRAD_TEST
-#define HESS_TEST
-#define ADMM_TEST
-#define REF_TEST
+#include "config.h"
 
 void inversion_test(void);
 void scalar_prod_test(void);
