@@ -4,33 +4,10 @@
 #include <math.h>
 #include <unistd.h>
 
-#include "matrix_ops.h"
-#include "qp.h"
-#include "qp_solvers.h"
+#include "test.h"
 
 #define TMP_FILENAME "tmp_test_file"
-#define SHELL_REF_TEST_CMD "python qp_ref.py " TMP_FILENAME
-#define TEST_PRECISION 1e-6
-#define NUM_INVERSION_TEST_RUNS 8
-
-#define P_RAND_ENTRY_MIN -1e3
-#define P_RAND_ENTRY_MAX 1e3
-#define Q_RAND_ENTRY_MIN -1e3
-#define Q_RAND_ENTRY_MAX 1e3
-#define X_RAND_ENTRY_MIN -1e3
-#define X_RAND_ENTRY_MAX 1e3
-
-#define NUM_OPT_TEST_RUNS 16
-
-#define GRAD_ITERATIONS 1e4
-#define HESS_ITERATIONS 1e1
-#define ADMM_ITERATIONS 1e4
-
-#define GRAD_TEST
-#define HESS_TEST
-#define ADMM_TEST
-#define REF_TEST
-
+#define SHELL_REF_TEST_CMD "python test/qp_ref.py " TMP_FILENAME
 #define ABS(x) (x < 0 ? -x : x)
 
 static unsigned almost_identity(struct _matrix * m, double precision)
@@ -150,63 +127,4 @@ void test_reference(struct _quadratic_form * qf)
 
 	system(SHELL_REF_TEST_CMD);
 	unlink(TMP_FILENAME);
-}
-
-int main(void)
-{
-	/* important */
-	kmalloc_init();
-	srand(time(0));
-
-	/* some test for matrix lib */
-	inversion_test();
-	scalar_prod_test();
-
-	/* prepare quadratic cost function */
-	struct _matrix * p = matrix_alloc(NxN);
-	struct _matrix * q = matrix_alloc(Nx1);
-	double r = 0;
-	struct _quadratic_form * qf = quadratic_form_alloc(p, q, r);
-	if (!qf) {
-		fprintf(stderr, "invalid quadratic "
-				"from quadratic_form_alloc in test\n");
-		return EXIT_FAILURE;
-	}
-
-	/* to hold initial state */
-	struct _matrix * x0 = matrix_alloc(Nx1);
-
-	/* test optimizers */
-	for (unsigned i = 0; NUM_OPT_TEST_RUNS > i; i++) {
-		matirx_random_pos_def(p, P_RAND_ENTRY_MIN, P_RAND_ENTRY_MAX);
-		matrix_random(q, Q_RAND_ENTRY_MIN, Q_RAND_ENTRY_MAX);
-		matrix_random(x0, X_RAND_ENTRY_MIN, X_RAND_ENTRY_MAX);
-
-#ifdef GRAD_TEST
-		test_optimizer(qf, GRAD_ITERATIONS, x0,
-			       "gradient_descent_with_line_search",
-				gradient_descent_with_line_search);
-#endif
-#ifdef HESS_TEST
-		test_optimizer(qf, HESS_ITERATIONS, x0,
-			       "newton_method_with_line_search",
-				newton_method_with_line_search);
-#endif
-#ifdef ADMM_TEST
-		test_optimizer(qf, ADMM_ITERATIONS, x0, "admm", admm);
-#endif
-#ifdef REF_TEST
-		test_reference(qf);
-#endif
-
-		printf("\v");
-	}
-
-	/* clean up */
-	matrix_free(x0);
-	matrix_free(p);
-	matrix_free(q);
-	quadratic_form_free(qf);
-
-	return EXIT_SUCCESS;
 }

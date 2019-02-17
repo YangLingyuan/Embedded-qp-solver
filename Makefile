@@ -1,4 +1,4 @@
-OUT = test
+OUT = main
 OBJ_DIR = obj
 DEP_DIR = dep
 INTERREST := $(shell find . | grep \\.[hcS]$)
@@ -22,7 +22,7 @@ CPPFLAGS = $(INC)
 
 # Regeln
 .PHONY: all
-all: test
+all: main
 
 -include $(DEP)
 
