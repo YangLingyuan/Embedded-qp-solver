@@ -44,7 +44,6 @@
 #define GRAD_TEST
 #define HESS_TEST
 #define ADMM_TEST
-#define REF_TEST
 
 #endif
 #endif
