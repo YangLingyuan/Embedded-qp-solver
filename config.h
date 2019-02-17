@@ -29,6 +29,9 @@
 #define ADMM_BOX_CONSTRAINT_MAX 1e12
 #define ADMM_BOX_CONSTRAINT_MIN -1e12
 
+/* python command on ur system */
+#define PYTHON_COMMAND "python"
+
 /* specify iterations each opt algo will take in worst case */
 #define GRAD_ITERATIONS 1e4
 #define HESS_ITERATIONS 1e1

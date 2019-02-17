@@ -1,8 +1,9 @@
 OUT = main
 OBJ_DIR = obj
 DEP_DIR = dep
+BOARD = %main_board.c
 INTERREST := $(shell find . | grep \\.[hcS]$)
-SRC = $(filter %.c %.S, $(INTERREST))
+SRC = $(filter-out $(BOARD), $(filter %.c %.S, $(INTERREST)))
 OBJ = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC)))))
 DEP = $(addprefix $(DEP_DIR)/, $(addsuffix .d, $(basename $(notdir $(INTERREST)))))
 INC = $(addprefix -I , $(sort $(dir $(filter %.h, $(INTERREST)))))

@@ -7,7 +7,7 @@
 #include "test.h"
 
 #define TMP_FILENAME "tmp_test_file"
-#define SHELL_REF_TEST_CMD "python test/qp_ref.py " TMP_FILENAME
+#define SHELL_REF_TEST_CMD PYTHON_COMMAND " test/qp_ref.py " TMP_FILENAME
 #define ABS(x) (x < 0 ? -x : x)
 
 static unsigned almost_identity(struct _matrix * m, double precision)
