@@ -1,3 +1,11 @@
+This qp_solver is to solve the following qp problem
+	minimize     (1/2)*x'*P*x + q'*x + r
+    	subject to   lb <= x <= ub
+
+*******************************************************
+How to use
+*******************************************************
+
 Use config / config_board for matrix size, test settings and to specify which tests to run.
 To try on computer, best use
 	make clean && make && ./main
